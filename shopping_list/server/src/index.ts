@@ -1,12 +1,22 @@
 import { buildApp } from './app.js';
 import { loadConfig } from './config.js';
+import { HaSync } from './hasync.js';
 import { defaultProducts, Store } from './store.js';
 
 const cfg = loadConfig();
 const store = new Store(cfg.dataDir, defaultProducts);
-const { app } = await buildApp(cfg, store);
+const { app, list } = await buildApp(cfg, store, { haStatus: () => sync?.status() });
+
+let sync: HaSync | undefined;
+if (cfg.ha) {
+  sync = new HaSync(store, list, { ...cfg.ha, log: (m) => app.log.info(m) });
+  sync.start();
+} else {
+  app.log.info('Home Assistant to-do sync is off (set ha_todo_entities to turn it on)');
+}
 
 const shutdown = async () => {
+  sync?.stop();
   await app.close();
   process.exit(0);
 };

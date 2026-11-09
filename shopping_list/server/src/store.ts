@@ -65,6 +65,7 @@ export function migrate(raw: Omit<Partial<Db>, 'items' | 'products'> & { items?:
       memory: raw.memory ?? {},
       purchases: raw.purchases ?? [],
       activity: raw.activity ?? [],
+      haSync: raw.haSync ?? {},
     };
   }
   const list: ShopList = { id: newId(), name: 'Weekly shop', aisleOrder: DEFAULT_CATEGORIES.map((c) => c.id), createdAt: now() };
@@ -97,7 +98,7 @@ export function migrate(raw: Omit<Partial<Db>, 'items' | 'products'> & { items?:
     };
   });
   return {
-    version: 3, lists: [list], categories: structuredClone(DEFAULT_CATEGORIES), items, products, memory: {}, purchases: [], activity: [],
+    version: 3, lists: [list], categories: structuredClone(DEFAULT_CATEGORIES), items, products, memory: {}, purchases: [], activity: [], haSync: {},
   };
 }
 

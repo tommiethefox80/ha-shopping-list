@@ -166,6 +166,12 @@ export function ListPage(props: PageProps) {
         </section>
       )}
 
+      {state.ha && (state.ha.connected || state.ha.error) && (
+        <p className={`muted small ha-status ${state.ha.error ? 'warn-text' : ''}`}>
+          {state.ha.error ? `⚠ ${state.ha.error}` : `🏠 Synced with Home Assistant (${state.ha.entities.join(', ')})`}
+        </p>
+      )}
+
       {scanning && (
         <Suspense fallback={null}>
           <Scanner

@@ -13,6 +13,7 @@ export interface Deps {
   list: ShoppingList;
   photos: Photos;
   barcodeLookup?: (ean: string) => Promise<BarcodeInfo | undefined>;
+  haStatus?: () => { connected: boolean; entities: string[]; error?: string } | undefined;
 }
 
 const fail = (reply: FastifyReply, code: number, e: unknown) => {
@@ -53,6 +54,7 @@ export async function apiRoutes(app: FastifyInstance, d: Deps) {
       frequent: frequentNames(db),
       memoryNames: Object.keys(db.memory).filter((k) => k.startsWith('n:')).map((k) => k.slice(2)),
       activity: db.activity.slice(-40).reverse(),
+      ha: d.haStatus?.() ?? null,
     };
   });
 

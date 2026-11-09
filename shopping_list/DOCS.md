@@ -29,11 +29,28 @@ It's a small Node app on Alpine (amd64 and aarch64) and uses very little memory.
 
 | Option | Default | Notes |
 |---|---|---|
+| `ha_todo_entities`, `ha_sync_list` | | See *Home Assistant to-do sync* below |
 | `api_token` | empty | Needed for calls that don't come through ingress, e.g. HA's `rest_command`. |
 
-## Voice and automations
+## Home Assistant to-do sync (voice, Alexa, dashboards)
 
-`homeassistant/` contains a `rest_command`, an `intent_script` and custom sentences. With those set up, you can say "*Add 2 beans to the shopping list*" through Assist, or add items from any automation.
+The add-on keeps one of its lists in step with Home Assistant to-do lists, in both directions:
+
+- **Assist:** "*Add milk to the shopping list*" lands on your list. "milk" merges into **Whole milk** if it's already there.
+- **Alexa:** add `todo.alexa_shopping_list` (from HA's Alexa Devices integration) to `ha_todo_entities`, and Alexa additions arrive too.
+- **HA dashboards and automations:** use the normal To-do list card, or `todo.*` triggers and actions, e.g. a notification when something is added.
+- Ticks, quantities (shown in HA as "beans ×3") and removals sync both ways. The app stays in charge of products, aisles, notes and photos.
+
+| Option | Default | Notes |
+|---|---|---|
+| `ha_todo_entities` | `todo.shopping_list` | The HA to-do lists to sync. Leave empty to turn syncing off. |
+| `ha_sync_list` | first list | The name of the list to mirror, e.g. `Weekly shop`. |
+
+`todo.shopping_list` comes from HA's built-in **Shopping list** integration (Settings → Devices & services → Add → Shopping list). Anything already on it is added to your list the first time it syncs.
+
+If you run the add-on outside Home Assistant (Docker on the NUC), set `HA_URL` and `HA_TOKEN` (a long-lived access token) as well.
+
+`homeassistant/` also has an optional `rest_command` for automations that call this add-on's own API directly.
 
 The API is plain JSON:
 

@@ -68,4 +68,5 @@ export interface AppState {
   frequent: string[];
   memoryNames: string[];
   activity: Activity[];
+  ha: { connected: boolean; entities: string[]; error?: string } | null;
 }

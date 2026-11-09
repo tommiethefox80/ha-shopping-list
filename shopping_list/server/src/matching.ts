@@ -45,9 +45,9 @@ export function findProduct(
 /** "2 beans", "2x beans", "beans x2", "beans 2" -> { name: "beans", qty: 2 } */
 export function parseItemText(text: string): { name: string; qty: number } {
   const t = text.trim().replace(/\s+/g, ' ');
-  let m = t.match(/^(\d{1,2})\s*x?\s+(.+)$/i);
+  let m = t.match(/^(\d{1,2})\s*[x×]?\s+(.+)$/i);
   if (m) return { name: m[2].trim(), qty: clampQty(Number(m[1])) };
-  m = t.match(/^(.+?)\s+x\s*(\d{1,2})$/i) ?? t.match(/^(.+?)\s+(\d{1,2})$/);
+  m = t.match(/^(.+?)\s+[x×]\s*(\d{1,2})$/i) ?? t.match(/^(.+?)\s+(\d{1,2})$/);
   if (m) return { name: m[1].trim(), qty: clampQty(Number(m[2])) };
   return { name: t, qty: 1 };
 }

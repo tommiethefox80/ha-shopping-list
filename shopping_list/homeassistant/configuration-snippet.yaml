@@ -1,24 +1,17 @@
-# Optional: add to the list from Assist / voice / automations.
+# Optional. Assist and Alexa work through the to-do sync (no YAML needed).
+# This rest_command calls the add-on's own API directly, e.g. from an automation.
 # 1. In the add-on options set api_token, and in secrets.yaml:
 #      shopping_list_auth: "Bearer <the same token>"
 # 2. Add this to configuration.yaml and restart Home Assistant.
 
 rest_command:
   shopping_list_add:
-    # Local add-ons are reachable from HA as local-<slug with dashes>.
+    # The add-on's hostname is on its Info page (e.g. aeb98774-shopping-list).
     # If you run the Docker version on the NUC instead, use http://<nuc-ip>:8099/api/items
-    url: "http://local-shopping-list:8099/api/items"
+    url: "http://aeb98774-shopping-list:8099/api/items"
     method: POST
     headers:
       authorization: !secret shopping_list_auth
     content_type: "application/json"
     payload: '{"text": {{ item | tojson }}, "source": "home-assistant"}'
 
-intent_script:
-  ShoppingListAdd:
-    action:
-      - action: rest_command.shopping_list_add
-        data:
-          item: "{{ item }}"
-    speech:
-      text: "Added {{ item }} to the shopping list"

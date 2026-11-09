@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.1.0
+- Two-way sync with Home Assistant to-do lists (default `todo.shopping_list`):
+  "add milk to the shopping list" via Assist lands here, and the list shows in HA's To-do dashboard and cards
+- Add `todo.alexa_shopping_list` (Alexa Devices integration) to sync with Alexa too
+- Ticks, quantity changes ("beans ×3") and removals go both ways; "milk" merges into Whole milk
+- Choose which list is mirrored with `ha_sync_list` (default: the first list)
+
 ## 3.0.0
 - Aisles: items are sorted into aisles automatically (UK grocery words), and each list has its own aisle order (⇅ Arrange aisles)
 - Move an item to a different aisle once and it's remembered for next time

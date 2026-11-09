@@ -14,7 +14,11 @@ const LOOPBACK = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 export async function buildApp(
   cfg: Config,
   store: Store,
-  opts: { logger?: boolean; barcodeLookup?: (ean: string) => Promise<BarcodeInfo | undefined> } = {},
+  opts: {
+    logger?: boolean;
+    barcodeLookup?: (ean: string) => Promise<BarcodeInfo | undefined>;
+    haStatus?: () => { connected: boolean; entities: string[]; error?: string } | undefined;
+  } = {},
 ) {
   const app = Fastify({
     logger: opts.logger === false ? false : { level: 'info', serializers: { req: (r) => ({ method: r.method, url: r.url }) } },
@@ -33,7 +37,7 @@ export async function buildApp(
     }
   });
 
-  await apiRoutes(app, { store, list, photos, barcodeLookup: opts.barcodeLookup });
+  await apiRoutes(app, { store, list, photos, barcodeLookup: opts.barcodeLookup, haStatus: opts.haStatus });
 
   if (existsSync(cfg.webDir)) {
     await app.register(fastifyStatic, { root: cfg.webDir, prefix: '/' });

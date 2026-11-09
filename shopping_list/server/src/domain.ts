@@ -81,6 +81,13 @@ export interface Activity {
   listId?: string;
 }
 
+/** What we last agreed with one Home Assistant to-do list: HA item uid -> our item. */
+export interface HaLink {
+  itemId: string;
+  summary: string;
+  status: 'needs_action' | 'completed';
+}
+
 export interface Db {
   version: 3;
   lists: ShopList[];
@@ -90,6 +97,8 @@ export interface Db {
   memory: Record<string, Memory>;
   purchases: Purchase[];
   activity: Activity[];
+  /** Per HA to-do entity: links between its items and ours. */
+  haSync: Record<string, { links: Record<string, HaLink> }>;
 }
 
 export const now = () => new Date().toISOString();
