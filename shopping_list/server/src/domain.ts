@@ -74,6 +74,14 @@ export interface Purchase {
   at: string;
 }
 
+/** Everything ever added, for type-ahead: key -> how often and when. */
+export interface HistoryEntry {
+  name: string;
+  productId?: string;
+  count: number;
+  lastAt: string;
+}
+
 export interface Activity {
   at: string;
   who?: string;
@@ -142,6 +150,7 @@ export interface Db {
   /** Evening meals: "2026-11-16" -> meal. */
   meals: Record<string, Meal>;
   cards: LoyaltyCard[];
+  history: Record<string, HistoryEntry>;
 }
 
 export const now = () => new Date().toISOString();

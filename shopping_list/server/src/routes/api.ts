@@ -56,6 +56,11 @@ export async function apiRoutes(app: FastifyInstance, d: Deps) {
       suggestions: dueSuggestions(db, listId),
       frequent: frequentNames(db),
       memoryNames: Object.keys(db.memory).filter((k) => k.startsWith('n:')).map((k) => k.slice(2)),
+      history: Object.entries(db.history)
+        .filter(([k, h]) => !k.startsWith('p:') || db.products.some((p) => p.id === h.productId))
+        .map(([key, h]) => ({ key, ...h }))
+        .sort((a, b) => b.count - a.count || b.lastAt.localeCompare(a.lastAt))
+        .slice(0, 1500),
       activity: db.activity.slice(-40).reverse(),
       ha: d.haStatus?.() ?? null,
       recipes: db.recipes.map((r) => ({
@@ -122,6 +127,10 @@ export async function apiRoutes(app: FastifyInstance, d: Deps) {
   );
   app.delete<{ Params: { id: string } }>('/api/items/:id', async (req) => {
     list.remove(req.params.id, whoIs(req));
+    return { ok: true };
+  });
+  app.delete<{ Params: { key: string } }>('/api/history/:key', async (req) => {
+    list.forget(decodeURIComponent(req.params.key));
     return { ok: true };
   });
   app.post<{ Body: { listId?: string } }>('/api/items/clear-done', async (req) => ({ removed: list.clearDone(req.body?.listId) }));

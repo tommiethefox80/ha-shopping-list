@@ -22,6 +22,7 @@ export class Store {
     this.db = existsSync(this.file)
       ? migrate(JSON.parse(readFileSync(this.file, 'utf8')))
       : migrate({ products: seed() as unknown as Legacy[] });
+    if (!Object.keys(this.db.history).length) backfillHistory(this.db);
     this.flush(false);
   }
 
@@ -69,6 +70,7 @@ export function migrate(raw: Omit<Partial<Db>, 'items' | 'products'> & { items?:
       recipes: (raw.recipes ?? []).map((r) => ({ ...r, tags: r.tags ?? [] })),
       meals: raw.meals ?? mealsFromPlan((raw as { plan?: Record<string, string[]> }).plan),
       cards: raw.cards ?? [],
+      history: raw.history ?? {},
     };
   }
   const list: ShopList = { id: newId(), name: 'Weekly shop', aisleOrder: DEFAULT_CATEGORIES.map((c) => c.id), createdAt: now() };
@@ -101,9 +103,27 @@ export function migrate(raw: Omit<Partial<Db>, 'items' | 'products'> & { items?:
     };
   });
   return {
-    version: 3, lists: [list], categories: structuredClone(DEFAULT_CATEGORIES), items, products, memory: {}, purchases: [], activity: [], haSync: {}, recipes: [], meals: {}, cards: [],
+    version: 3, lists: [list], categories: structuredClone(DEFAULT_CATEGORIES), items, products, memory: {}, purchases: [], activity: [], haSync: {}, recipes: [], meals: {}, cards: [], history: {},
   };
 }
+
+/** First run of type-ahead: learn from what's been bought, what's on lists and remembered names. */
+export function backfillHistory(db: Db) {
+  const bump = (key: string, name: string, productId: string | undefined, at: string) => {
+    const h = db.history[key] ?? { name, productId, count: 0, lastAt: at };
+    h.count++;
+    if (at >= h.lastAt) {
+      h.lastAt = at;
+      h.name = name;
+    }
+    db.history[key] = h;
+  };
+  for (const p of db.purchases) bump(p.key, p.name, p.productId, p.at);
+  for (const i of db.items) bump(i.productId ? `p:${i.productId}` : `n:${normName(i.name)}`, i.name, i.productId, i.createdAt);
+  for (const k of Object.keys(db.memory)) if (k.startsWith('n:') && !db.history[k]) db.history[k] = { name: k.slice(2), count: 1, lastAt: new Date(0).toISOString() };
+}
+
+const normName = (s: string) => s.toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
 
 /** 3.2's plan allowed several recipes a day; keep the first as that day's evening meal. */
 function mealsFromPlan(plan?: Record<string, string[]>): Db['meals'] {

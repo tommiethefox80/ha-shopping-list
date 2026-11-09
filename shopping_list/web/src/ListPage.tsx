@@ -1,6 +1,7 @@
 import { lazy, Suspense, useMemo, useState } from 'react';
 import { api } from './api';
 import type { PageProps } from './App';
+import { AddBar } from './AddBar';
 import { AislesSheet } from './AislesSheet';
 import { CardsSheet } from './CardsSheet';
 import { ItemSheet } from './ItemSheet';
@@ -12,7 +13,6 @@ const Scanner = lazy(() => import('./Scanner').then((m) => ({ default: m.Scanner
 
 export function ListPage(props: PageProps) {
   const { state, act, list } = props;
-  const [text, setText] = useState('');
   const [scanning, setScanning] = useState(false);
   const [editing, setEditing] = useState<string>();
   const [showDone, setShowDone] = useState(false);
@@ -24,10 +24,6 @@ export function ListPage(props: PageProps) {
   const done = items.filter((i) => i.status === 'ticked').sort((a, b) => (b.tickedAt ?? '').localeCompare(a.tickedAt ?? ''));
   const usuals = state.products.filter((p) => p.usual);
   const onList = useMemo(() => new Set(open.map((i) => i.resolved.productId).filter(Boolean)), [open]);
-  const names = useMemo(
-    () => [...new Set([...state.frequent, ...state.products.flatMap((p) => [p.label, ...p.aliases]), ...state.memoryNames])],
-    [state.frequent, state.products, state.memoryNames],
-  );
   const editingItem = state.items.find((i) => i.id === editing);
 
   // Group open items by aisle, in this list's walking order.
@@ -43,14 +39,6 @@ export function ListPage(props: PageProps) {
   const priced = items.some((i) => i.resolved.price);
   const unpriced = open.filter((i) => !i.resolved.price).length;
 
-  const add = (e: React.FormEvent) => {
-    e.preventDefault();
-    const t = text.trim();
-    if (!t) return;
-    setText('');
-    void act(() => api.post('items', { text: t, listId: list.id }));
-  };
-
   return (
     <>
       <header className="page-head">
@@ -64,14 +52,7 @@ export function ListPage(props: PageProps) {
         </span>
       </header>
 
-      <form className="add-bar" onSubmit={add}>
-        <input list="known-names" placeholder="Add item… e.g. 2 beans" value={text} onChange={(e) => setText(e.target.value)} enterKeyHint="done" />
-        <datalist id="known-names">{names.map((n) => <option key={n} value={n} />)}</datalist>
-        <button type="submit" aria-label="Add">+</button>
-        <button type="button" className="scan-btn" aria-label="Scan barcode" onClick={() => setScanning(true)}>
-          <BarcodeIcon />
-        </button>
-      </form>
+      <AddBar {...props} onScan={() => setScanning(true)} />
 
       {usuals.length > 0 && (
         <section className="usuals">

@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.5.0
+- Type-ahead: the app remembers everything you've ever added and how often
+- As you type it fills in the rest in grey ("ba" → bananas); Enter or → accepts, keep typing for something new
+- Matches listed under the box, best first (starts with what you typed, then most added and most recent), showing the brand note and whether it's already on the list; tap to add
+- Quantities still work ("2 bas" → 2 basmati rice), and other names find the product ("baked" → Beans)
+- Tap the box with nothing typed to see what you add most; ✕ stops suggesting something
+- History is filled in from what you've already bought and listed, so it works straight away
+
 ## 3.4.0
 - Meals tab: Monday to Sunday evening meal planner, move between weeks, one dinner a day — a recipe or just "Leftovers", "Takeaway", "Eating out"…
 - Set how many each meal is for; "Add the week's ingredients" adds everything for the week's recipes in one go

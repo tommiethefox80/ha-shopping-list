@@ -87,6 +87,14 @@ export interface LoyaltyCard {
   format: 'EAN13' | 'CODE128' | 'QR';
 }
 
+export interface HistoryEntry {
+  key: string;
+  name: string;
+  productId?: string;
+  count: number;
+  lastAt: string;
+}
+
 export interface AppState {
   version: number;
   me?: string;
@@ -96,6 +104,7 @@ export interface AppState {
   products: Product[];
   suggestions: Suggestion[];
   frequent: string[];
+  history: HistoryEntry[];
   memoryNames: string[];
   activity: Activity[];
   ha: { connected: boolean; entities: string[]; error?: string } | null;

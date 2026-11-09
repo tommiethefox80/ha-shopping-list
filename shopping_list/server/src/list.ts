@@ -123,6 +123,12 @@ export class ShoppingList {
 
     const product = explicit ?? findProduct(products, { name, ean: input.ean });
     return this.store.update((db) => {
+      const hk = itemKey(product?.id, name);
+      const h = db.history[hk] ?? { name, productId: product?.id, count: 0, lastAt: now() };
+      h.count++;
+      h.lastAt = now();
+      h.name = product?.label ?? name;
+      db.history[hk] = h;
       const existing = db.items.find(
         (i) =>
           i.listId === listId &&
@@ -195,6 +201,13 @@ export class ShoppingList {
       }
       item.updatedAt = now();
       return item;
+    });
+  }
+
+  /** Stop suggesting something (it stays on lists if it's there). */
+  forget(key: string) {
+    this.store.update((db) => {
+      delete db.history[key];
     });
   }
 

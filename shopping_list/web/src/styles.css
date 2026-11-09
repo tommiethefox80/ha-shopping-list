@@ -208,3 +208,21 @@ textarea { padding: 11px 12px; border: 1px solid var(--line); border-radius: 10p
 .meal.empty { border-style: dashed; color: var(--blue); justify-content: center; font-weight: 600; }
 .products li.selected { border-color: var(--blue); background: var(--blue-2); }
 .add-bar.static { position: static; }
+
+/* type-ahead */
+.add-wrap { position: sticky; top: 0; z-index: 8; background: var(--bg); }
+.add-wrap .add-bar { position: static; }
+.typeahead { position: relative; flex: 1; min-width: 0; }
+.typeahead input { position: relative; background: transparent; z-index: 1; font-size: 1.05rem; }
+.typeahead .ghost { position: absolute; inset: 0; padding: 11px 13px; border: 1px solid transparent; font-size: 1.05rem; white-space: pre; overflow: hidden; background: var(--card); border-radius: 10px; pointer-events: none; }
+.ghost-typed { color: transparent; }
+.ghost-rest { color: var(--muted); opacity: .75; }
+.suggest-list { list-style: none; margin: -4px 0 10px; padding: 4px 0; background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.12); max-height: 55vh; overflow-y: auto; }
+.suggest-list li { display: flex; align-items: center; border-bottom: 1px solid var(--line); }
+.suggest-list li:last-child { border-bottom: 0; }
+.suggest-head, .suggest-hint { padding: 6px 12px; display: block !important; }
+.suggest-pick { flex: 1; background: none; color: var(--text); text-align: left; display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 0; }
+.s-name { font-weight: 600; }
+.s-detail { display: block; }
+.s-count { flex: none; }
+.suggest-forget { background: none; color: var(--muted); padding: 10px 12px; flex: none; }

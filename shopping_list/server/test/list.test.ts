@@ -62,6 +62,34 @@ describe('shopping list', () => {
   });
 });
 
+describe('type-ahead history', () => {
+  it('remembers everything added, how often and as the product name; can forget', () => {
+    const { store, list } = fresh();
+    list.add({ text: 'houmous' });
+    list.add({ text: '2 houmous' });
+    list.add({ text: 'baked beans' });
+    const h = store.data.history;
+    expect(h['n:houmous']).toMatchObject({ name: 'houmous', count: 2 });
+    const beans = store.data.products.find((p) => p.label === 'Beans')!;
+    expect(h[`p:${beans.id}`]).toMatchObject({ name: 'Beans', count: 1 });
+    list.forget('n:houmous');
+    expect(store.data.history['n:houmous']).toBeUndefined();
+  });
+
+  it('backfills from earlier purchases and list items on upgrade', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'sl-hist-'));
+    const a = new Store(dir, defaultProducts);
+    const raw = JSON.parse(JSON.stringify(a.data));
+    delete raw.history;
+    raw.purchases = [{ key: 'n:bananas', name: 'bananas', qty: 1, at: '2026-10-01T00:00:00Z' }, { key: 'n:bananas', name: 'Bananas', qty: 1, at: '2026-10-08T00:00:00Z' }];
+    raw.items = [{ id: 'i', listId: raw.lists[0].id, name: 'eggs', qty: 1, status: 'todo', createdAt: '2026-11-01T00:00:00Z', updatedAt: 'x' }];
+    writeFileSync(join(dir, 'shopping-list.json'), JSON.stringify(raw));
+    const b = new Store(dir);
+    expect(b.data.history['n:bananas']).toMatchObject({ name: 'Bananas', count: 2 });
+    expect(b.data.history['n:eggs']).toMatchObject({ count: 1 });
+  });
+});
+
 describe('aisles', () => {
   it('guesses common UK grocery aisles', () => {
     expect(guessCategory('bananas')).toBe('fruit-veg');

@@ -2,7 +2,7 @@
 
 A shared shopping list for the household. It runs as a Home Assistant add-on and appears as **Shopping** in the HA sidebar and the HA phone app.
 
-- **Add things fast.** Type "2 beans" and the quantity is set. Names you've used before are suggested as you type, and adding the same thing twice raises the quantity rather than creating a second line.
+- **Add things fast.** Type "2 beans" and the quantity is set. The app remembers everything you've added: as you type, it fills in the rest in grey (press Enter or → to accept) and lists the best matches to tap. Adding the same thing twice raises the quantity rather than creating a second line.
 - **Usuals bar** at the top of the list. Tap a chip to add one item, or tap **+ Add all** for the whole weekly set.
 - **Products** record exactly what you mean, so "beans" means *Branston Baked Beans 410g*. Each product can have other names, a usual quantity, a ★ usual flag and barcodes.
 - **Barcode scanning** with the phone camera. A barcode you've scanned before adds that product straight away. A new barcode is looked up on Open Food Facts and saved as a product with its name and picture, so the next scan is instant.
