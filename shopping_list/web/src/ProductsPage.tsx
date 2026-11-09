@@ -1,12 +1,13 @@
 import { lazy, Suspense, useState } from 'react';
 import { api } from './api';
+import { money, parseMoney, photoUrl, pickAndUploadPhoto } from './util';
 import type { PageProps } from './App';
 import type { Product } from './types';
 
 const Scanner = lazy(() => import('./Scanner').then((m) => ({ default: m.Scanner })));
 
 /** Products: "when we say beans we mean Branston 410g", plus usuals and barcodes. */
-export function ProductsPage({ state, act }: PageProps) {
+export function ProductsPage({ state, act, toast }: PageProps) {
   const [filter, setFilter] = useState('');
   const [editing, setEditing] = useState<Product | 'new'>();
   const f = filter.toLowerCase();
@@ -25,9 +26,13 @@ export function ProductsPage({ state, act }: PageProps) {
       <ul className="products">
         {products.map((p) => (
           <li key={p.id} onClick={() => setEditing(p)}>
-            {p.imageUrl ? <img src={p.imageUrl} alt="" loading="lazy" /> : <div className="img-ph" />}
+            {p.photo || p.imageUrl ? <img src={p.photo ? photoUrl(p.photo) : p.imageUrl} alt="" loading="lazy" /> : <div className="img-ph" />}
             <div className="grow">
-              <div className="name">{p.label}{p.defaultQty > 1 && <span className="muted"> ×{p.defaultQty}</span>}</div>
+              <div className="name">
+                {p.label}
+                {p.defaultQty > 1 && <span className="muted"> ×{p.defaultQty}</span>}
+                {p.price ? <span className="price"> {money(p.price)}</span> : null}
+              </div>
               {p.detail && <div className="muted small">{p.detail}</div>}
               {(p.aliases.length > 0 || p.eans.length > 0) && (
                 <div className="muted small">
@@ -49,12 +54,12 @@ export function ProductsPage({ state, act }: PageProps) {
           </li>
         ))}
       </ul>
-      {editing && <ProductEditor product={editing === 'new' ? undefined : editing} act={act} onClose={() => setEditing(undefined)} />}
+      {editing && <ProductEditor product={editing === 'new' ? undefined : editing} state={state} act={act} toast={toast} onClose={() => setEditing(undefined)} />}
     </>
   );
 }
 
-function ProductEditor({ product, act, onClose }: { product?: Product; act: PageProps['act']; onClose: () => void }) {
+function ProductEditor({ product, state, act, toast, onClose }: { product?: Product; state: PageProps['state']; act: PageProps['act']; toast: PageProps['toast']; onClose: () => void }) {
   const [label, setLabel] = useState(product?.label ?? '');
   const [aliases, setAliases] = useState(product?.aliases.join(', ') ?? '');
   const [detail, setDetail] = useState(product?.detail ?? '');
@@ -62,9 +67,16 @@ function ProductEditor({ product, act, onClose }: { product?: Product; act: Page
   const [usual, setUsual] = useState(product?.usual ?? false);
   const [eans, setEans] = useState<string[]>(product?.eans ?? []);
   const [scanning, setScanning] = useState(false);
+  const [categoryId, setCategoryId] = useState(product?.categoryId ?? '');
+  const [price, setPrice] = useState(product?.price ? (product.price / 100).toFixed(2) : '');
+  const [photo, setPhoto] = useState(product?.photo);
+  const pic = photo ? photoUrl(photo) : product?.imageUrl;
 
   const save = () => {
-    const body = { label, aliases: aliases.split(',').map((s) => s.trim()).filter(Boolean), detail, defaultQty: qty, usual, eans };
+    const body = {
+      label, aliases: aliases.split(',').map((s) => s.trim()).filter(Boolean), detail, defaultQty: qty, usual, eans,
+      categoryId, price: parseMoney(price), photo: photo ?? null,
+    };
     void act(() => (product ? api.patch(`products/${product.id}`, body) : api.post('products', body)), 'Saved').then(onClose);
   };
 
@@ -75,9 +87,37 @@ function ProductEditor({ product, act, onClose }: { product?: Product; act: Page
           <h2>{product ? 'Edit product' : 'New product'}</h2>
           <button className="ghost" onClick={onClose}>Close</button>
         </div>
-        <label>When we say<input value={label} placeholder="e.g. beans" onChange={(e) => setLabel(e.target.value)} /></label>
+        <div className="row photo-row">
+          {pic ? <img className="photo" src={pic} alt="" /> : <div className="photo empty-photo">No photo</div>}
+          <div className="grow">
+            <label>When we say<input value={label} placeholder="e.g. beans" onChange={(e) => setLabel(e.target.value)} /></label>
+            <button
+              className="secondary small-btn"
+              onClick={async () => {
+                try {
+                  const id = await pickAndUploadPhoto();
+                  if (id) setPhoto(id);
+                } catch (e) {
+                  toast((e as Error).message);
+                }
+              }}
+            >
+              📷 {pic ? 'Change photo' : 'Add photo'}
+            </button>
+          </div>
+        </div>
         <label>We mean (brand, size, variety)<input value={detail} placeholder="e.g. Branston Baked Beans 410g" onChange={(e) => setDetail(e.target.value)} /></label>
         <label>Also known as (comma separated)<input value={aliases} placeholder="baked beans, branston beans" onChange={(e) => setAliases(e.target.value)} /></label>
+        <div className="row">
+          <label className="grow">
+            Aisle
+            <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+              <option value="">Work it out</option>
+              {state.categories.map((c) => <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>)}
+            </select>
+          </label>
+          <label className="price-field">Price<input inputMode="decimal" placeholder="£" value={price} onChange={(e) => setPrice(e.target.value)} /></label>
+        </div>
         <div className="row">
           <label className="grow">Usual quantity<input type="number" min={1} max={99} value={qty} onChange={(e) => setQty(Number(e.target.value))} /></label>
           <label className="check"><input type="checkbox" checked={usual} onChange={(e) => setUsual(e.target.checked)} /> ★ Usual</label>

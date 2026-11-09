@@ -1,36 +1,62 @@
 import { lazy, Suspense, useMemo, useState } from 'react';
 import { api } from './api';
 import type { PageProps } from './App';
+import { AislesSheet } from './AislesSheet';
 import { ItemSheet } from './ItemSheet';
-import type { Item } from './types';
+import { ListsSheet } from './ListsSheet';
+import type { Category, Item } from './types';
+import { ago, money, photoUrl } from './util';
 
 const Scanner = lazy(() => import('./Scanner').then((m) => ({ default: m.Scanner })));
 
-export function ListPage({ state, act }: PageProps) {
+export function ListPage(props: PageProps) {
+  const { state, act, list } = props;
   const [text, setText] = useState('');
   const [scanning, setScanning] = useState(false);
   const [editing, setEditing] = useState<string>();
   const [showDone, setShowDone] = useState(false);
+  const [sheet, setSheet] = useState<'lists' | 'aisles'>();
+  const [showActivity, setShowActivity] = useState(false);
 
-  const open = state.items.filter((i) => i.status === 'todo');
-  const done = state.items.filter((i) => i.status === 'ticked');
+  const items = state.items.filter((i) => i.listId === list.id);
+  const open = items.filter((i) => i.status === 'todo');
+  const done = items.filter((i) => i.status === 'ticked').sort((a, b) => (b.tickedAt ?? '').localeCompare(a.tickedAt ?? ''));
   const usuals = state.products.filter((p) => p.usual);
   const onList = useMemo(() => new Set(open.map((i) => i.resolved.productId).filter(Boolean)), [open]);
-  const names = useMemo(() => [...new Set(state.products.flatMap((p) => [p.label, ...p.aliases]))].sort(), [state.products]);
+  const names = useMemo(
+    () => [...new Set([...state.frequent, ...state.products.flatMap((p) => [p.label, ...p.aliases]), ...state.memoryNames])],
+    [state.frequent, state.products, state.memoryNames],
+  );
   const editingItem = state.items.find((i) => i.id === editing);
+
+  // Group open items by aisle, in this list's walking order.
+  const groups = useMemo(() => {
+    const cats = new Map(state.categories.map((c) => [c.id, c]));
+    const order = [...list.aisleOrder, ...state.categories.map((c) => c.id).filter((c) => !list.aisleOrder.includes(c))];
+    return order
+      .map((id) => ({ cat: cats.get(id), items: open.filter((i) => i.resolved.categoryId === id) }))
+      .filter((g): g is { cat: Category; items: Item[] } => !!g.cat && g.items.length > 0);
+  }, [open, list.aisleOrder, state.categories]);
+
+  const total = (xs: Item[]) => xs.reduce((s, i) => s + (i.resolved.price ?? 0) * i.qty, 0);
+  const priced = items.some((i) => i.resolved.price);
+  const unpriced = open.filter((i) => !i.resolved.price).length;
 
   const add = (e: React.FormEvent) => {
     e.preventDefault();
     const t = text.trim();
     if (!t) return;
     setText('');
-    void act(() => api.post('items', { text: t }));
+    void act(() => api.post('items', { text: t, listId: list.id }));
   };
 
   return (
     <>
       <header className="page-head">
-        <h1>Shopping list</h1>
+        <button className="list-switch" onClick={() => setSheet('lists')}>
+          <h1>{list.name}</h1>
+          <span className="caret">▾</span>
+        </button>
         <span className="muted">{open.length} to get</span>
       </header>
 
@@ -47,11 +73,15 @@ export function ListPage({ state, act }: PageProps) {
         <section className="usuals">
           <div className="usuals-head">
             <span>Usuals</span>
-            <button className="link" onClick={() => act(() => api.post('usuals/add'), 'Added all usuals')}>+ Add all</button>
+            <button className="link" onClick={() => act(() => api.post('usuals/add', { listId: list.id }), 'Added all usuals')}>+ Add all</button>
           </div>
           <div className="chips">
             {usuals.map((p) => (
-              <button key={p.id} className={`chip ${onList.has(p.id) ? 'on' : ''}`} onClick={() => act(() => api.post('usuals/add', { productIds: [p.id] }), `Added ${p.label}`)}>
+              <button
+                key={p.id}
+                className={`chip ${onList.has(p.id) ? 'on' : ''}`}
+                onClick={() => act(() => api.post('usuals/add', { listId: list.id, productIds: [p.id] }), `Added ${p.label}`)}
+              >
                 {onList.has(p.id) ? '✓ ' : '+ '}
                 {p.label}
               </button>
@@ -60,42 +90,107 @@ export function ListPage({ state, act }: PageProps) {
         </section>
       )}
 
+      {state.suggestions.length > 0 && (
+        <section className="usuals suggest">
+          <div className="usuals-head">
+            <span>Running low?</span>
+            <span className="muted small">from what you usually buy</span>
+          </div>
+          <div className="chips">
+            {state.suggestions.map((s) => (
+              <button
+                key={s.key}
+                className="chip"
+                title={`Usually every ${s.everyDays} days, last ${s.daysSince} days ago`}
+                onClick={() => act(() => api.post('items', { name: s.name, productId: s.productId, qty: s.qty, listId: list.id, source: 'suggestion' }), `Added ${s.name}`)}
+              >
+                + {s.name} <span className="chip-meta">{s.daysSince}d</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
       {open.length === 0 && <p className="empty">Nothing on the list. Add something above, scan a barcode, or tap a usual.</p>}
-      <ul className="items">
-        {open.map((i) => <ItemRow key={i.id} item={i} act={act} onOpen={() => setEditing(i.id)} />)}
-      </ul>
+      {groups.map((g) => (
+        <section key={g.cat.id} className="aisle">
+          <h2 className="aisle-head">
+            <span>{g.cat.emoji}</span> {g.cat.name}
+          </h2>
+          <ul className="items">
+            {g.items.map((i) => <ItemRow key={i.id} item={i} act={act} onOpen={() => setEditing(i.id)} />)}
+          </ul>
+        </section>
+      ))}
+      {open.length > 0 && (
+        <div className="row between list-tools">
+          <button className="link" onClick={() => setSheet('aisles')}>⇅ Arrange aisles for {list.name}</button>
+        </div>
+      )}
+
+      {priced && (
+        <div className="totals">
+          <span>
+            List <strong>{money(total(open))}</strong>
+            {unpriced > 0 && <span className="muted small"> + {unpriced} unpriced</span>}
+          </span>
+          {done.length > 0 && <span>In trolley <strong>{money(total(done))}</strong></span>}
+        </div>
+      )}
 
       {done.length > 0 && (
         <section className="done">
           <div className="usuals-head">
-            <button className="link" onClick={() => setShowDone(!showDone)}>{showDone ? '▾' : '▸'} Done ({done.length})</button>
-            <button className="link" onClick={() => act(() => api.post('items/clear-done'), 'Cleared')}>Clear</button>
+            <button className="link" onClick={() => setShowDone(!showDone)}>{showDone ? '▾' : '▸'} Got it ({done.length})</button>
+            <button className="link" onClick={() => act(() => api.post(`lists/${list.id}/clear-done`), 'Cleared')}>Clear</button>
           </div>
           {showDone && <ul className="items faded">{done.map((i) => <ItemRow key={i.id} item={i} act={act} onOpen={() => setEditing(i.id)} />)}</ul>}
         </section>
       )}
 
-      {scanning && (
-        <Suspense fallback={null}><Scanner
-          title="Scan to add"
-          continuous
-          onClose={() => setScanning(false)}
-          onCode={async (ean) => {
-            try {
-              const r = await api.post<{ matched: boolean; lookedUp?: string; item: Item }>('scan', { ean });
-              void act(async () => {});
-              return r.matched
-                ? `✓ ${r.item.name} (×${r.item.qty})`
-                : r.lookedUp
-                  ? `✓ ${r.lookedUp} — saved, next scan is instant`
-                  : `Added barcode ${ean} — not recognised, tap it on the list to name it`;
-            } catch (e) {
-              return (e as Error).message;
-            }
-          }}
-        /></Suspense>
+      {state.activity.length > 0 && (
+        <section className="activity">
+          <button className="link" onClick={() => setShowActivity(!showActivity)}>{showActivity ? '▾' : '▸'} Recent changes</button>
+          {showActivity && (
+            <ul className="log">
+              {state.activity
+                .filter((a) => !a.listId || a.listId === list.id)
+                .slice(0, 20)
+                .map((a, i) => (
+                  <li key={i}>
+                    <strong>{a.who ?? 'Someone'}</strong> {a.text} <span className="muted small">· {ago(a.at)}</span>
+                  </li>
+                ))}
+            </ul>
+          )}
+        </section>
       )}
-      {editingItem && <ItemSheet item={editingItem} state={state} act={act} onClose={() => setEditing(undefined)} />}
+
+      {scanning && (
+        <Suspense fallback={null}>
+          <Scanner
+            title={`Scan to add to ${list.name}`}
+            continuous
+            onClose={() => setScanning(false)}
+            onCode={async (ean) => {
+              try {
+                const r = await api.post<{ matched: boolean; lookedUp?: string; item: Item }>('scan', { ean, listId: list.id });
+                void act(async () => {});
+                return r.matched
+                  ? `✓ ${r.item.name} (×${r.item.qty})`
+                  : r.lookedUp
+                    ? `✓ ${r.lookedUp} — saved, next scan is instant`
+                    : `Added barcode ${ean} — not recognised, tap it on the list to name it`;
+              } catch (e) {
+                return (e as Error).message;
+              }
+            }}
+          />
+        </Suspense>
+      )}
+      {editingItem && <ItemSheet {...props} item={editingItem} onClose={() => setEditing(undefined)} />}
+      {sheet === 'lists' && <ListsSheet {...props} onClose={() => setSheet(undefined)} onArrange={() => setSheet('aisles')} />}
+      {sheet === 'aisles' && <AislesSheet {...props} onClose={() => setSheet(undefined)} />}
     </>
   );
 }
@@ -103,6 +198,11 @@ export function ListPage({ state, act }: PageProps) {
 function ItemRow({ item, act, onOpen }: { item: Item; act: PageProps['act']; onOpen: () => void }) {
   const ticked = item.status === 'ticked';
   const setQty = (qty: number) => (qty < 1 ? act(() => api.del(`items/${item.id}`)) : act(() => api.patch(`items/${item.id}`, { qty })));
+  const pic = item.resolved.photo ? photoUrl(item.resolved.photo) : item.resolved.imageUrl;
+  const sub = [
+    item.resolved.detail && item.resolved.detail.toLowerCase() !== item.name.toLowerCase() ? item.resolved.detail : undefined,
+    item.note ? `“${item.note}”` : undefined,
+  ].filter(Boolean);
   return (
     <li className={`item ${item.status}`}>
       <button
@@ -112,14 +212,14 @@ function ItemRow({ item, act, onOpen }: { item: Item; act: PageProps['act']; onO
       >
         {ticked ? '✓' : ''}
       </button>
+      {pic && <img className="thumb" src={pic} alt="" loading="lazy" onClick={onOpen} />}
       <div className="grow" onClick={onOpen}>
         <div className="name">
           {item.name}
           {ticked && item.qty > 1 && <span className="muted"> ×{item.qty}</span>}
         </div>
-        {item.resolved.detail && item.resolved.detail.toLowerCase() !== item.name.toLowerCase() && (
-          <div className="sub muted">{item.resolved.detail}</div>
-        )}
+        {sub.length > 0 && <div className="sub muted">{sub.join(' · ')}</div>}
+        {item.resolved.price ? <div className="sub price">{money(item.resolved.price * item.qty)}{item.qty > 1 && <span className="muted"> ({money(item.resolved.price)} each)</span>}</div> : null}
       </div>
       {!ticked && (
         <div className="qty">

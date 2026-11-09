@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.0.0
+- Aisles: items are sorted into aisles automatically (UK grocery words), and each list has its own aisle order (⇅ Arrange aisles)
+- Move an item to a different aisle once and it's remembered for next time
+- "Running low?" suggestions from what you usually buy and how often
+- Instant sync between phones, plus "Recent changes" showing who added or got what (uses your Home Assistant name)
+- Multiple lists (e.g. Weekly shop, Aldi, B&Q), each with its own aisle order
+- Item notes for this shop, and photos of the exact product
+- Prices: remembered per product, with a running total for the list and what's in the trolley
+- Autocomplete now suggests what you buy most first
+
 ## 2.0.0
 - Now a pure shopping list: removed Send to Tesco, the Tesco sign-in and the background browser
   (Tesco's bot protection blocks automated browsers)

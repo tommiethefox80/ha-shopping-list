@@ -4,6 +4,7 @@ import { existsSync } from 'node:fs';
 import type { Config } from './config.js';
 import { ShoppingList } from './list.js';
 import type { BarcodeInfo } from './openfoodfacts.js';
+import { Photos } from './photos.js';
 import { apiRoutes } from './routes/api.js';
 import type { Store } from './store.js';
 
@@ -18,7 +19,9 @@ export async function buildApp(
   const app = Fastify({
     logger: opts.logger === false ? false : { level: 'info', serializers: { req: (r) => ({ method: r.method, url: r.url }) } },
   });
+  app.addContentTypeParser('image/jpeg', { parseAs: 'buffer', bodyLimit: 4 * 1024 * 1024 }, (_req, body, done) => done(null, body));
   const list = new ShoppingList(store);
+  const photos = new Photos(cfg.dataDir);
 
   // Home Assistant ingress is already authenticated. Anything else (e.g. a rest_command
   // from HA on the internal network) needs the API token, if one is configured.
@@ -30,7 +33,7 @@ export async function buildApp(
     }
   });
 
-  await apiRoutes(app, { store, list, barcodeLookup: opts.barcodeLookup });
+  await apiRoutes(app, { store, list, photos, barcodeLookup: opts.barcodeLookup });
 
   if (existsSync(cfg.webDir)) {
     await app.register(fastifyStatic, { root: cfg.webDir, prefix: '/' });

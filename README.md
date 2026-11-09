@@ -6,7 +6,12 @@ A shared shopping list for the household. It runs as a Home Assistant add-on and
 - **Usuals bar** at the top of the list. Tap a chip to add one item, or tap **+ Add all** for the whole weekly set.
 - **Products** record exactly what you mean, so "beans" means *Branston Baked Beans 410g*. Each product can have other names, a usual quantity, a ★ usual flag and barcodes.
 - **Barcode scanning** with the phone camera. A barcode you've scanned before adds that product straight away. A new barcode is looked up on Open Food Facts and saved as a product with its name and picture, so the next scan is instant.
-- **Tick off** items as you shop. They move to **Done** until you clear them, and the list stays in sync across phones.
+- **Aisles**: items are sorted into aisles automatically, in the order you walk the shop. Each list has its own order, and if you move an item to a different aisle once, it's remembered.
+- **Running low?** suggests things you buy regularly that are about due, based on how often you buy them.
+- **Live sync**: changes appear on every phone instantly. **Recent changes** shows who added or got what, using people's Home Assistant names.
+- **Multiple lists** (weekly shop, Aldi, B&Q…), each item with an optional **note** and a **photo** of the exact product.
+- **Prices** are remembered per product, with a running total for the list and for what's in the trolley.
+- **Tick off** items as you shop. They move to **Got it** until you clear them.
 
 ## Install
 

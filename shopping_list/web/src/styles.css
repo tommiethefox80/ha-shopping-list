@@ -104,3 +104,32 @@ progress { width: 100%; height: 10px; }
 .option.on { background: var(--blue-2); }
 .other-input { margin: 8px 0; }
 .other-input summary { cursor: pointer; padding: 6px 0; }
+
+.list-switch { background: none; color: var(--text); padding: 0; display: flex; align-items: center; gap: 6px; }
+.list-switch .caret { color: var(--muted); font-size: 1rem; }
+.suggest { border-style: dashed; }
+.chip-meta { opacity: .6; font-size: .75rem; margin-left: 2px; }
+.aisle { margin-bottom: 12px; }
+.aisle-head { font-size: .85rem; font-weight: 600; color: var(--muted); margin: 14px 4px 6px; text-transform: none; }
+.thumb { width: 38px; height: 38px; object-fit: contain; border-radius: 8px; background: #fff; flex: none; }
+.item .price { color: var(--text); font-weight: 600; }
+.price { color: var(--green); font-weight: 600; font-size: .9em; }
+.totals { display: flex; justify-content: space-between; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; margin: 14px 0 0; }
+.list-tools { margin: 6px 0 0; }
+.activity { margin-top: 16px; }
+.activity .log li::before { content: ''; }
+.lists { list-style: none; padding: 0; margin: 8px 0; }
+.lists li { display: flex; align-items: center; gap: 6px; padding: 4px 0; border-bottom: 1px solid var(--line); }
+.lists li.on .list-pick { font-weight: 700; }
+.list-pick { background: none; color: var(--text); text-align: left; padding: 10px 4px; }
+.aisle-order { list-style: none; padding: 0; margin: 8px 0; }
+.aisle-order li { display: flex; align-items: center; gap: 6px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.mini { background: var(--blue-2); color: var(--blue); width: 34px; height: 34px; padding: 0; border-radius: 8px; }
+.mini.danger { background: transparent; color: var(--red); }
+.emoji-in { max-width: 56px; text-align: center; flex: none !important; }
+.photo-row { align-items: flex-start; }
+.photo { width: 88px; height: 88px; border-radius: 12px; object-fit: contain; background: #fff; border: 1px solid var(--line); flex: none; }
+.empty-photo { display: grid; place-items: center; color: var(--muted); font-size: .75rem; background: var(--card); }
+.small-btn { padding: 7px 10px; font-size: .85rem; margin-top: 8px; }
+.price-field { width: 110px; flex: none; }
+button.link.danger { color: var(--red); }

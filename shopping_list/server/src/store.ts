@@ -1,26 +1,28 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { Db, Item, Product } from './domain.js';
+import { DEFAULT_CATEGORIES } from './categories.js';
+import type { Db, Item, Product, ShopList } from './domain.js';
 import { newId, now } from './domain.js';
 
+type Listener = (version: number) => void;
+
 /**
- * Tiny JSON-file store. The whole list fits comfortably in memory; every change is written
- * atomically (temp file + rename) so a crash can't leave a half-written file.
+ * Tiny JSON-file store. Everything fits comfortably in memory; every change is written
+ * atomically (temp file + rename). Listeners hear about every change (drives live updates).
  */
 export class Store {
   private db: Db;
   private readonly file: string;
+  private listeners = new Set<Listener>();
+  version = 0;
 
-  constructor(dataDir: string, seed: () => Product[] = () => []) {
+  constructor(readonly dataDir: string, seed: () => Product[] = () => []) {
     mkdirSync(dataDir, { recursive: true });
     this.file = join(dataDir, 'shopping-list.json');
-    if (existsSync(this.file)) {
-      this.db = migrate(JSON.parse(readFileSync(this.file, 'utf8')));
-      this.flush();
-    } else {
-      this.db = { items: [], products: seed() };
-      this.flush();
-    }
+    this.db = existsSync(this.file)
+      ? migrate(JSON.parse(readFileSync(this.file, 'utf8')))
+      : migrate({ products: seed() as unknown as Legacy[] });
+    this.flush(false);
   }
 
   get data(): Readonly<Db> {
@@ -29,23 +31,45 @@ export class Store {
 
   update<T>(fn: (db: Db) => T): T {
     const result = fn(this.db);
-    this.flush();
+    this.flush(true);
     return result;
   }
 
-  private flush() {
+  subscribe(fn: Listener): () => void {
+    this.listeners.add(fn);
+    return () => this.listeners.delete(fn);
+  }
+
+  private flush(notify: boolean) {
     const tmp = this.file + '.tmp';
     writeFileSync(tmp, JSON.stringify(this.db, null, 2));
     renameSync(tmp, this.file);
+    if (notify) {
+      this.version++;
+      for (const l of this.listeners) l(this.version);
+    }
   }
 }
 
 type Legacy = Record<string, unknown>;
 
-/** Upgrade data written by 1.x (Tesco version): keep the list and products, drop the Tesco fields. */
-export function migrate(raw: { items?: Legacy[]; products?: Legacy[] }): Db {
-  const products: Product[] = (raw.products ?? []).map((p) => ({
-    id: String(p.id),
+/** Bring any earlier data (1.x Tesco version, 2.x single list) up to the v3 model. */
+export function migrate(raw: Omit<Partial<Db>, 'items' | 'products'> & { items?: Legacy[]; products?: Legacy[] }): Db {
+  if (raw.version === 3) {
+    return {
+      version: 3,
+      lists: raw.lists ?? [],
+      categories: raw.categories?.length ? raw.categories : structuredClone(DEFAULT_CATEGORIES),
+      items: (raw.items ?? []) as unknown as Item[],
+      products: (raw.products ?? []) as unknown as Product[],
+      memory: raw.memory ?? {},
+      purchases: raw.purchases ?? [],
+      activity: raw.activity ?? [],
+    };
+  }
+  const list: ShopList = { id: newId(), name: 'Weekly shop', aisleOrder: DEFAULT_CATEGORIES.map((c) => c.id), createdAt: now() };
+  const products: Product[] = (raw.products ?? []).map((p: Legacy) => ({
+    id: String(p.id ?? newId()),
     label: String(p.label),
     aliases: (p.aliases as string[]) ?? [],
     detail: (p.detail as string) ?? (p.tescoName as string) ?? undefined,
@@ -56,10 +80,11 @@ export function migrate(raw: { items?: Legacy[]; products?: Legacy[] }): Db {
     createdAt: String(p.createdAt ?? now()),
     updatedAt: String(p.updatedAt ?? now()),
   }));
-  const items: Item[] = (raw.items ?? []).map((i) => {
+  const items: Item[] = (raw.items ?? []).map((i: Legacy) => {
     const done = i.status === 'ticked' || i.status === 'in_basket';
     return {
       id: String(i.id),
+      listId: list.id,
       name: String(i.name),
       qty: Number(i.qty ?? 1),
       ean: (i.ean as string) ?? undefined,
@@ -71,7 +96,9 @@ export function migrate(raw: { items?: Legacy[]; products?: Legacy[] }): Db {
       tickedAt: done ? String(i.addedAt ?? i.tickedAt ?? i.updatedAt ?? now()) : undefined,
     };
   });
-  return { items, products };
+  return {
+    version: 3, lists: [list], categories: structuredClone(DEFAULT_CATEGORIES), items, products, memory: {}, purchases: [], activity: [],
+  };
 }
 
 /** Starting products: the usuals plus the defaults agreed with Tom. */
