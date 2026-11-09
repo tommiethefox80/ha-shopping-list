@@ -1,5 +1,5 @@
 name: Shopping List
-version: "1.0.0"
+version: "1.0.1"
 slug: shopping_list
 description: Shared shopping list with usuals, barcode scanning and a Send to Tesco basket button
 url: https://github.com/tommiethefox80/ha-shopping-list

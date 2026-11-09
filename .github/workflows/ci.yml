@@ -31,12 +31,25 @@ jobs:
           npm run build
 
   docker:
-    runs-on: ubuntu-latest
+    # Build exactly as Home Assistant Supervisor does (it passes its Alpine base as BUILD_FROM),
+    # on both architectures the add-on supports.
+    strategy:
+      matrix:
+        runner: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
     needs: test
     steps:
       - uses: actions/checkout@v4
-      - name: Build add-on image (amd64)
-        run: docker build -t shopping-list:ci shopping_list
+      - name: Build add-on image
+        run: docker build --build-arg BUILD_FROM=ghcr.io/home-assistant/base:latest -t shopping-list:ci shopping_list
+      - name: Smoke test the image
+        run: |
+          docker run -d --name sl -p 8099:8099 -e DATA_DIR=/tmp/data shopping-list:ci
+          for i in $(seq 1 30); do curl -sf localhost:8099/api/state >/dev/null && break; sleep 2; done
+          curl -sf localhost:8099/api/state | head -c 200; echo
+          curl -sf localhost:8099/ | grep -q '<div id="root">'
+          docker exec sl node -e "require('/app/server/node_modules/playwright').chromium.launch().then(b=>{console.log('chromium ok');return b.close()})"
+          docker logs sl
 
   release:
     # Releases are driven by config.yaml: when main has a version with no release yet,

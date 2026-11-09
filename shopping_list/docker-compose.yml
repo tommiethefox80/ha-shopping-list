@@ -1,10 +1,7 @@
 # Alternative to the Home Assistant add-on: run on any Docker host (e.g. the NUC).
 services:
   shopping-list:
-    build:
-      context: .
-      args:
-        BUILD_FROM: mcr.microsoft.com/playwright:v1.65.0-noble
+    build: .
     ports:
       - "8099:8099"
     environment:
