@@ -1,17 +1,5 @@
-/** ticked = crossed off by hand (e.g. bought in store); in_basket = added to the Tesco basket by Send. */
-export type ItemStatus = 'todo' | 'needs_product' | 'in_basket' | 'ticked' | 'unavailable' | 'error';
-
-/** A Tesco product found by searching, offered when an item has no default product yet. */
-export interface Candidate {
-  tescoId: string;
-  name: string;
-  price?: string;
-  clubcardPrice?: string;
-  imageUrl?: string;
-  available: boolean;
-  /** Offer label from Tesco, e.g. "£5.50 Half Price Clubcard Price" or "2 for £20 Clubcard Price". */
-  offer?: string;
-}
+/** todo = still to get; ticked = got it (crossed off, shown under Done until cleared). */
+export type ItemStatus = 'todo' | 'ticked';
 
 /** A line on the shopping list. */
 export interface Item {
@@ -19,33 +7,25 @@ export interface Item {
   name: string;
   qty: number;
   ean?: string;
-  /** Explicit product chosen for this item (overrides name matching). */
+  /** The product this item is (set explicitly, by barcode, or matched by name). */
   productId?: string;
-  /** One-off product picked without saving it as a default. */
-  oneOffTescoId?: string;
-  oneOffTescoName?: string;
   status: ItemStatus;
-  message?: string;
-  candidates?: Candidate[];
   source?: string;
   createdAt: string;
   updatedAt: string;
-  addedAt?: string;
+  tickedAt?: string;
 }
 
-/** A default: "when we say X we mean this Tesco product". */
+/** Something you buy: "when we say beans we mean Branston Baked Beans 410g". */
 export interface Product {
   id: string;
   label: string;
   aliases: string[];
-  tescoId: string;
-  tescoName: string;
-  price?: string;
+  /** Exactly which one: brand, size, variety ("Branston Baked Beans 410g"). */
+  detail?: string;
   imageUrl?: string;
   eans: string[];
   defaultQty: number;
-  /** Rule: use one of these instead of the main product when it's on offer (first match wins). */
-  offerSwaps?: { tescoId: string; tescoName: string }[];
   /** Shown in the "Usuals" bar at the top of the list. */
   usual: boolean;
   createdAt: string;

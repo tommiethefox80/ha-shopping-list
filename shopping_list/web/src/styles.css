@@ -19,9 +19,9 @@ button.ghost { background: transparent; color: var(--blue); padding: 8px 10px; }
 button.danger { background: transparent; color: var(--red); }
 button.link { background: none; color: var(--blue); padding: 4px; }
 button.wide { width: 100%; padding: 14px; }
-input { font: inherit; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--text); width: 100%; min-width: 0; }
+input, select { font: inherit; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--text); width: 100%; min-width: 0; }
 label { display: block; font-size: .85rem; color: var(--muted); margin: 10px 0 0; }
-label input { margin-top: 4px; color: var(--text); }
+label input, label select { margin-top: 4px; color: var(--text); width: 100%; }
 label.check { display: flex; align-items: center; gap: 8px; color: var(--text); font-size: .95rem; }
 label.check input { width: auto; margin: 0; }
 .row { display: flex; gap: 8px; align-items: center; margin: 8px 0; flex-wrap: wrap; }

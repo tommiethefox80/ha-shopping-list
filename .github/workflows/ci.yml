@@ -16,10 +16,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Server – install, typecheck, test (real Chrome against a mock Tesco)
+      - name: Server – install, typecheck, test
         working-directory: shopping_list/server
-        env:
-          CHROME_PATH: /usr/bin/google-chrome
         run: |
           npm ci
           npx tsc --noEmit
@@ -48,7 +46,7 @@ jobs:
           for i in $(seq 1 30); do curl -sf localhost:8099/api/state >/dev/null && break; sleep 2; done
           curl -sf localhost:8099/api/state | head -c 200; echo
           curl -sf localhost:8099/ | grep -q '<div id="root">'
-          docker exec sl node -e "require('/app/server/node_modules/playwright').chromium.launch({headless:false}).then(b=>{console.log('headed chromium ok');return b.close()})"
+          curl -sf -X POST -H 'content-type: application/json' -d '{"text":"2 beans"}' localhost:8099/api/items
       - name: Container logs
         if: always()
         run: docker logs sl 2>&1 | tail -60 || true

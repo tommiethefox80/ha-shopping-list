@@ -17,4 +17,3 @@ export const api = {
   del: <T>(p: string) => call<T>('DELETE', p),
 };
 
-export const tescoUrl = (id: string) => `https://www.tesco.com/groceries/en-GB/products/${id}`;

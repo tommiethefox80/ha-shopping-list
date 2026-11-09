@@ -2,11 +2,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { api } from './api';
 import { ListPage } from './ListPage';
 import { ProductsPage } from './ProductsPage';
-import { TescoPage } from './TescoPage';
 import type { AppState } from './types';
 
-type Tab = 'list' | 'defaults' | 'tesco';
-const tabFromHash = (): Tab => (['list', 'defaults', 'tesco'].includes(location.hash.slice(1)) ? (location.hash.slice(1) as Tab) : 'list');
+type Tab = 'list' | 'defaults';
+const tabFromHash = (): Tab => (location.hash.slice(1) === 'defaults' ? 'defaults' : 'list');
 
 export function App() {
   const [tab, setTab] = useState<Tab>(tabFromHash);
@@ -23,17 +22,17 @@ export function App() {
     }
   }, []);
 
-  // Poll fast while a send is running; otherwise every 10s so changes from other phones show up.
+  // Every 5s so changes from other phones show up.
   useEffect(() => {
     void refresh();
-    const t = setInterval(refresh, state?.job.running ? 1500 : 10_000);
+    const t = setInterval(refresh, 5000);
     const onVisible = () => document.visibilityState === 'visible' && refresh();
     document.addEventListener('visibilitychange', onVisible);
     return () => {
       clearInterval(t);
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [refresh, state?.job.running]);
+  }, [refresh]);
 
   useEffect(() => {
     const f = () => setTab(tabFromHash());
@@ -72,7 +71,7 @@ export function App() {
     <div className="app">
       <main>
         {error && <p className="notice warn">Can't reach the add-on: {error}</p>}
-        {!state ? <p className="muted center">Loading…</p> : tab === 'list' ? <ListPage {...ctx} /> : tab === 'defaults' ? <ProductsPage {...ctx} /> : <TescoPage {...ctx} />}
+        {!state ? <p className="muted center">Loading…</p> : tab === 'list' ? <ListPage {...ctx} /> : <ProductsPage {...ctx} />}
       </main>
       {toast && <div className="toast">{toast}</div>}
       <nav className="tabs">
@@ -81,10 +80,6 @@ export function App() {
         </button>
         <button className={tab === 'defaults' ? 'on' : ''} onClick={() => go('defaults')}>
           <span className="ico">★</span>Products
-        </button>
-        <button className={tab === 'tesco' ? 'on' : ''} onClick={() => go('tesco')}>
-          <span className="ico">🛒</span>Tesco
-          {state?.session.signedIn === false && <span className="dot" />}
         </button>
       </nav>
     </div>
@@ -96,5 +91,5 @@ export interface PageProps {
   act: (fn: () => Promise<unknown>, done?: string) => Promise<void>;
   toast: (msg: string) => void;
   refresh: () => Promise<void>;
-  go: (t: 'list' | 'defaults' | 'tesco') => void;
+  go: (t: 'list' | 'defaults') => void;
 }

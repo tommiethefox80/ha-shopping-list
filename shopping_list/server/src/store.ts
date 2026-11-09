@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { Db, Product } from './domain.js';
+import type { Db, Item, Product } from './domain.js';
 import { newId, now } from './domain.js';
 
 /**
@@ -15,8 +15,8 @@ export class Store {
     mkdirSync(dataDir, { recursive: true });
     this.file = join(dataDir, 'shopping-list.json');
     if (existsSync(this.file)) {
-      const raw = JSON.parse(readFileSync(this.file, 'utf8')) as Partial<Db>;
-      this.db = { items: raw.items ?? [], products: raw.products ?? [] };
+      this.db = migrate(JSON.parse(readFileSync(this.file, 'utf8')));
+      this.flush();
     } else {
       this.db = { items: [], products: seed() };
       this.flush();
@@ -40,25 +40,53 @@ export class Store {
   }
 }
 
-/** Defaults agreed with Tom: usuals plus "beans" and "chopped tomatoes". */
+type Legacy = Record<string, unknown>;
+
+/** Upgrade data written by 1.x (Tesco version): keep the list and products, drop the Tesco fields. */
+export function migrate(raw: { items?: Legacy[]; products?: Legacy[] }): Db {
+  const products: Product[] = (raw.products ?? []).map((p) => ({
+    id: String(p.id),
+    label: String(p.label),
+    aliases: (p.aliases as string[]) ?? [],
+    detail: (p.detail as string) ?? (p.tescoName as string) ?? undefined,
+    imageUrl: (p.imageUrl as string) ?? undefined,
+    eans: (p.eans as string[]) ?? [],
+    defaultQty: Number(p.defaultQty ?? 1),
+    usual: Boolean(p.usual ?? p.regular ?? false),
+    createdAt: String(p.createdAt ?? now()),
+    updatedAt: String(p.updatedAt ?? now()),
+  }));
+  const items: Item[] = (raw.items ?? []).map((i) => {
+    const done = i.status === 'ticked' || i.status === 'in_basket';
+    return {
+      id: String(i.id),
+      name: String(i.name),
+      qty: Number(i.qty ?? 1),
+      ean: (i.ean as string) ?? undefined,
+      productId: (i.productId as string) ?? undefined,
+      status: done ? 'ticked' : 'todo',
+      source: (i.source as string) ?? undefined,
+      createdAt: String(i.createdAt ?? now()),
+      updatedAt: String(i.updatedAt ?? now()),
+      tickedAt: done ? String(i.addedAt ?? i.tickedAt ?? i.updatedAt ?? now()) : undefined,
+    };
+  });
+  return { items, products };
+}
+
+/** Starting products: the usuals plus the defaults agreed with Tom. */
 export function defaultProducts(): Product[] {
   const t = now();
-  const p = (
-    label: string,
-    aliases: string[],
-    tescoId: string,
-    tescoName: string,
-    usual = false,
-  ): Product => ({
-    id: newId(), label, aliases, tescoId, tescoName, eans: [], defaultQty: 1, usual, createdAt: t, updatedAt: t,
+  const p = (label: string, aliases: string[], detail: string, usual = false): Product => ({
+    id: newId(), label, aliases, detail, eans: [], defaultQty: 1, usual, createdAt: t, updatedAt: t,
   });
   return [
-    p('Whole milk', ['milk', 'full fat milk'], '254656399', 'Tesco British Whole Milk 2.272L, 4 Pints', true),
-    p('Semi skimmed milk', ['semi skimmed', 'semi skimmed milk 2l'], '253737115', 'Tesco Filtered Semi Skimmed Milk 2 Litre', true),
-    p('Bread', ['loaf', 'wholemeal bread', 'wholemeal loaf'], '300134377', 'Tesco Finest Wholemeal Loaf 800G', true),
-    p('Cat food', ['whiskas', 'cat food pouches'], '313620945', 'Whiskas 7+ Senior Wet Cat Food Fish Favourites in Jelly 12x85g', true),
-    p('Beans', ['baked beans', 'branston beans'], '275205504', 'Branston Baked Beans In Tomato Sauce 410G'),
-    p('Chopped tomatoes', ['tinned tomatoes', 'tin of tomatoes'], '251825089', 'Tesco Italian Chopped Tomatoes 400G'),
-    p('Nappies', ['pampers', 'size 6 nappies'], '288089822', 'Pampers Baby-Dry Size 6 Nappies 33 Pack'),
+    p('Whole milk', ['milk', 'full fat milk'], 'Tesco British Whole Milk 4 pints', true),
+    p('Semi skimmed milk', ['semi skimmed'], 'Tesco Filtered Semi Skimmed Milk 2L', true),
+    p('Bread', ['loaf', 'wholemeal bread', 'wholemeal loaf'], 'Tesco Finest Wholemeal Loaf 800g', true),
+    p('Cat food', ['whiskas'], 'Whiskas 7+ Senior Fish Favourites in Jelly 12×85g', true),
+    p('Beans', ['baked beans', 'branston beans'], 'Branston Baked Beans in Tomato Sauce 410g'),
+    p('Chopped tomatoes', ['tinned tomatoes', 'tin of tomatoes'], 'Tesco Italian Chopped Tomatoes 400g'),
+    p('Nappies', ['size 6 nappies'], 'Size 6 — Pampers Baby-Dry if on offer, otherwise Fred & Flo'),
   ];
 }

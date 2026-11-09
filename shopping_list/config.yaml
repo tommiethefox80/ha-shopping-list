@@ -1,7 +1,7 @@
 name: Shopping List
-version: "1.1.1"
+version: "2.0.0"
 slug: shopping_list
-description: Shared shopping list with usuals, barcode scanning and a Send to Tesco basket button
+description: Shared household shopping list with usuals, barcode scanning and products you always buy
 url: https://github.com/tommiethefox80/ha-shopping-list
 arch:
   - amd64
@@ -13,9 +13,6 @@ ingress_port: 8099
 panel_icon: mdi:cart-outline
 panel_title: Shopping
 options:
-  headless: false
   api_token: ""
 schema:
-  headless: bool
   api_token: password?
-  tesco_base_url: url?

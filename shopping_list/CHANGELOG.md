@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.0.0
+- Now a pure shopping list: removed Send to Tesco, the Tesco sign-in and the background browser
+  (Tesco's bot protection blocks automated browsers)
+- Much smaller and lighter add-on: plain Node on Alpine instead of a 2GB browser image
+- Products keep "exactly which one" as a note (e.g. Branston Baked Beans 410g); existing Tesco product names carried over
+- Scanning an unknown barcode now saves it as a product with its name and picture, so the next scan is instant
+- Your list, usuals, products and barcodes are kept when upgrading
+
 ## 1.1.1
 - Tesco sign-in: separate Email (Next) and Password (Sign in) fields that fill Tesco's own boxes, instead of relaying keystrokes
 - Sign-in picture falls back to Chrome's own capture when it stalls, and says when it may be out of date

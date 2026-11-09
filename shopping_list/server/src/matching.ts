@@ -26,7 +26,7 @@ export function productNames(p: Product): string[] {
   return [p.label, ...p.aliases];
 }
 
-/** Resolve the default product for a list item: explicit choice, then barcode, then name/alias. */
+/** Which product a list item is: explicit choice, then barcode, then name/alias. */
 export function findProduct(
   products: Product[],
   item: { name: string; ean?: string; productId?: string },
@@ -55,11 +55,4 @@ export function parseItemText(text: string): { name: string; qty: number } {
 export function clampQty(n: number): number {
   if (!Number.isFinite(n)) return 1;
   return Math.min(99, Math.max(1, Math.round(n)));
-}
-
-/** Accepts a Tesco product URL or a bare product id. */
-export function parseTescoId(input: string): string | undefined {
-  const s = input.trim();
-  const m = s.match(/\/products\/(\d{6,12})/) ?? s.match(/^(\d{6,12})$/);
-  return m?.[1];
 }
