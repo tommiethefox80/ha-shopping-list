@@ -67,7 +67,11 @@ The API is plain JSON. These calls can be made from Home Assistant:
 
 ## Releasing
 
-Bump `version` in `shopping_list/config.yaml`, add a line to `shopping_list/CHANGELOG.md`, commit, then tag `vX.Y.Z` and push the tag. CI runs the tests and creates the GitHub release; Home Assistant offers the update once it sees the new version.
+1. Bump `version` in `shopping_list/config.yaml`.
+2. Add a `## X.Y.Z` section to `shopping_list/CHANGELOG.md`.
+3. Push to `main`.
+
+CI runs the tests, builds the image, then tags `vX.Y.Z` and publishes the GitHub release. Home Assistant offers the update once it sees the new version.
 
 ## Development
 
