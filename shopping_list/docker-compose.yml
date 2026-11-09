@@ -1,0 +1,17 @@
+# Alternative to the Home Assistant add-on: run on any Docker host (e.g. the NUC).
+services:
+  shopping-list:
+    build:
+      context: .
+      args:
+        BUILD_FROM: mcr.microsoft.com/playwright:v1.65.0-noble
+    ports:
+      - "8099:8099"
+    environment:
+      DATA_DIR: /data
+      HEADLESS: "false"
+      API_TOKEN: ""          # set one if the port is reachable from outside your LAN
+    volumes:
+      - ./data:/data
+    shm_size: 1gb            # Chromium needs more than Docker's 64MB default
+    restart: unless-stopped

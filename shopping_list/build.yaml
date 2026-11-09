@@ -1,0 +1,5 @@
+# Microsoft's Playwright image: Ubuntu + Node + a matching Chromium (multi-arch).
+# Keep this tag in step with the playwright version in server/package.json.
+build_from:
+  amd64: mcr.microsoft.com/playwright:v1.65.0-noble
+  aarch64: mcr.microsoft.com/playwright:v1.65.0-noble
