@@ -45,7 +45,7 @@ await page.goto(base + '#tesco');
 await page.getByRole('button', { name: 'Sign in to Tesco' }).click();
 await new Promise((r) => setTimeout(r, 2500));
 await shot('3-tesco-viewer');
-await tesco.type('tom@example.com'); await tesco.press('Tab'); await tesco.type('x'); await tesco.press('Enter');
+await tesco.fillSignIn('email', 'tom@example.com'); await tesco.fillSignIn('password', 'x');
 await new Promise((r) => setTimeout(r, 800));
 
 // Send for real

@@ -7,7 +7,9 @@ export function TescoPage({ state, act }: PageProps) {
   const [viewer, setViewer] = useState(false);
   const [frame, setFrame] = useState(0);
   const [text, setText] = useState('');
-  const [secret, setSecret] = useState(true);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [stale, setStale] = useState(false);
   const [busy, setBusy] = useState(false);
   const [src, setSrc] = useState<string>();
   const [viewerMsg, setViewerMsg] = useState<string>();
@@ -33,6 +35,7 @@ export function TescoPage({ state, act }: PageProps) {
           setViewerMsg((body as { error?: string }).error ?? `Couldn't get a picture (HTTP ${r.status})`);
           return;
         }
+        setStale(r.headers.get('X-Frame-Stale') === '1');
         const url = URL.createObjectURL(await r.blob());
         if (lastUrl.current) URL.revokeObjectURL(lastUrl.current);
         lastUrl.current = url;
@@ -84,24 +87,50 @@ export function TescoPage({ state, act }: PageProps) {
 
       {viewer && (
         <div className="viewer">
-          <p className="muted small">Tap a box on the page to select it, type below, then use Tab / Enter. What you type goes straight to Tesco and is never saved.</p>
+          <p className="muted small">Enter your Tesco email and tap Next, then your password and tap Sign in. They go straight into Tesco's page and are never saved. You can also tap the picture to press buttons on it.</p>
           {viewerMsg && <p className="notice warn">{viewerMsg}</p>}
           {src ? (
             <img src={src} alt="The add-on's browser" onClick={tap} />
           ) : (
             <p className="muted center">Starting the browser and opening Tesco… this can take 20–30 seconds the first time.</p>
           )}
-          <form className="row" onSubmit={(e) => { e.preventDefault(); const t = text; setText(''); void run(() => api.post('session/type', { text: t })); }}>
-            <input type={secret ? 'password' : 'text'} autoComplete="off" placeholder="Text to type into the selected box" value={text} onChange={(e) => setText(e.target.value)} />
-            <button type="button" className="ghost" onClick={() => setSecret(!secret)}>{secret ? '👁' : '🙈'}</button>
-            <button type="submit">Type</button>
+          {stale && <p className="muted small">⚠ The picture may be a few seconds behind while Tesco loads.</p>}
+          <form
+            className="row"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const t = email;
+              void run(() => api.post('session/fill', { field: 'email', text: t }));
+            }}
+          >
+            <input type="email" autoComplete="username" placeholder="Tesco email address" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <button type="submit" disabled={!email}>Next</button>
           </form>
+          <form
+            className="row"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const t = password;
+              setPassword('');
+              void run(() => api.post('session/fill', { field: 'password', text: t }));
+            }}
+          >
+            <input type="password" autoComplete="current-password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <button type="submit" disabled={!password}>Sign in</button>
+          </form>
+          <details className="other-input">
+            <summary className="muted small">Something else (a code, a captcha, another box)?</summary>
+            <form className="row" onSubmit={(e) => { e.preventDefault(); const t = text; setText(''); void run(() => api.post('session/type', { text: t })); }}>
+              <input autoComplete="off" placeholder="Tap the box on the picture, then type here" value={text} onChange={(e) => setText(e.target.value)} />
+              <button type="submit">Type</button>
+            </form>
           <div className="row">
             {['Tab', 'Enter', 'Backspace'].map((k) => (
               <button key={k} className="secondary" onClick={() => run(() => api.post('session/key', { key: k }))}>{k}</button>
             ))}
-            <button onClick={() => run(() => act(() => api.post('session/check')))}>I'm signed in</button>
           </div>
+          </details>
+          <button className="secondary" onClick={() => run(() => act(() => api.post('session/check')))}>I'm signed in — check</button>
         </div>
       )}
 

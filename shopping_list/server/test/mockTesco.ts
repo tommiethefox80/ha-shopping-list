@@ -43,8 +43,11 @@ export function startMockTesco(): Promise<MockTesco> {
     const p = url.pathname.replace('/shop/', '/groceries/');
 
     if (p === '/account/auth/en-GB/login' && req.method === 'GET') {
-      return html(page('Complete your sign-in', false, `<form method="post"><input name="email" autofocus aria-label="Email">
-        <input name="password" type="password" aria-label="Password"><button>Sign in</button></form>`));
+      // Two steps like Tesco: email -> Next -> password -> Sign in. Nothing focused on load.
+      return html(page('Sign in', false, `<form method="post" id="f" onsubmit="if(!document.getElementById('pw')){event.preventDefault();
+          const p=document.createElement('input');p.type='password';p.name='password';p.id='pw';this.appendChild(p);document.getElementById('b').textContent='Sign in';}">
+        <label>Email address <input name="email" type="email" autocomplete="username"></label>
+        <button id="b">Next</button></form>`));
     }
     if (p === '/account/auth/en-GB/login' && req.method === 'POST') {
       return res.writeHead(302, { location: '/groceries/en-GB/trolley', 'set-cookie': `signed=${epoch}; Path=/` }).end();

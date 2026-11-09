@@ -1,6 +1,8 @@
 import { rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { chromium, type BrowserContext, type Page, type Response } from 'playwright';
+
+export type SignInField = 'email' | 'password';
 import type { Candidate } from '../domain.js';
 
 export class SessionExpiredError extends Error {
@@ -25,7 +27,9 @@ export interface TescoClient {
   addToBasket(tescoId: string, qty: number): Promise<AddResult>;
   /** Remote sign-in viewer */
   openSignIn(): Promise<void>;
-  screenshot(): Promise<Buffer>;
+  screenshot(): Promise<{ image: Buffer; stale: boolean }>;
+  /** Put text into Tesco's email or password box and submit it. */
+  fillSignIn(field: SignInField, text: string): Promise<{ ok: boolean; message?: string }>;
   click(xRatio: number, yRatio: number): Promise<void>;
   type(text: string): Promise<void>;
   press(key: string): Promise<void>;
@@ -286,21 +290,60 @@ export class TescoDriver implements TescoClient {
   private lastFrame?: Buffer;
 
   /**
-   * A picture of the background browser for the sign-in viewer. Screenshots can stall while a
-   * slow, script-heavy page (like Tesco's sign-in) is mid-navigation, so give up quickly and
-   * return the last good frame instead; the viewer just asks again a moment later.
+   * A picture of the background browser for the sign-in viewer. Playwright's screenshot can stall
+   * on busy pages, so fall back to Chrome's own capture, then to the last good frame (marked stale).
    * Not mutex-guarded on purpose: lets you watch sign-in and send jobs live.
    */
-  async screenshot(): Promise<Buffer> {
+  async screenshot(): Promise<{ image: Buffer; stale: boolean }> {
     const page = await this.getPage();
     try {
-      const frame = await withTimeout(page.screenshot({ type: 'jpeg', quality: 60, timeout: 3000, animations: 'disabled' }), 4000);
-      this.lastFrame = frame;
-      return frame;
+      const image = await withTimeout(page.screenshot({ type: 'jpeg', quality: 60, timeout: 3000, animations: 'disabled' }), 4000);
+      this.lastFrame = image;
+      return { image, stale: false };
     } catch {
-      if (this.lastFrame) return this.lastFrame;
+      /* try Chrome's capture */
+    }
+    try {
+      const cdp = await page.context().newCDPSession(page);
+      try {
+        const shot = (await withTimeout(cdp.send('Page.captureScreenshot', { format: 'jpeg', quality: 60 }), 3000)) as { data: string };
+        const image = Buffer.from(shot.data, 'base64');
+        this.lastFrame = image;
+        return { image, stale: false };
+      } finally {
+        cdp.detach().catch(() => undefined);
+      }
+    } catch {
+      if (this.lastFrame) return { image: this.lastFrame, stale: true };
       throw new Error('Tesco is still loading…');
     }
+  }
+
+  fillSignIn(field: SignInField, text: string): Promise<{ ok: boolean; message?: string }> {
+    return this.mutex.run(async () => {
+      const page = await this.getPage();
+      const selector =
+        field === 'password'
+          ? 'input[type="password"]'
+          : 'input[type="email"], input[autocomplete="username"], input[autocomplete="email"], input[name*="email" i], input[id*="email" i], input[name*="user" i], input[type="text"]:not([type="search"])';
+      for (const frame of page.frames()) {
+        const box = frame.locator(selector).filter({ visible: true }).first();
+        if (!(await box.count().catch(() => 0))) continue;
+        await box.click({ timeout: 5000 });
+        await box.fill('');
+        await box.pressSequentially(text, { delay: 35 });
+        await box.press('Enter');
+        await page.waitForLoadState('domcontentloaded').catch(() => undefined);
+        return { ok: true };
+      }
+      return {
+        ok: false,
+        message:
+          field === 'password'
+            ? "There's no password box on the page yet. Enter your email first (or tap Next on the picture)."
+            : "There's no email box on the page. Tap 'Sign in to Tesco' to open the sign-in page.",
+      };
+    });
   }
 
   click(xRatio: number, yRatio: number): Promise<void> {
@@ -315,6 +358,15 @@ export class TescoDriver implements TescoClient {
   type(text: string): Promise<void> {
     return this.mutex.run(async () => {
       const page = await this.getPage();
+      const focused = await page.evaluate(() => {
+        const a = document.activeElement;
+        return !!a && a !== document.body && ['INPUT', 'TEXTAREA', 'IFRAME'].includes(a.tagName);
+      });
+      if (!focused) {
+        // Nothing selected: pick the first visible text box (e.g. a one-time code field).
+        const box = page.locator('input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=search]):not([type=submit])').filter({ visible: true }).first();
+        if (await box.count()) await box.focus();
+      }
       await page.keyboard.type(text, { delay: 40 });
     });
   }

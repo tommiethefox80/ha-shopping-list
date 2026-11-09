@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.1
+- Tesco sign-in: separate Email (Next) and Password (Sign in) fields that fill Tesco's own boxes, instead of relaying keystrokes
+- Sign-in picture falls back to Chrome's own capture when it stalls, and says when it may be out of date
+- Typing into "something else" focuses the first text box if nothing is selected
+
 ## 1.1.0
 - Rules: "use this instead when it's on offer" on any product, e.g. Pampers if on offer, otherwise Fred & Flo
 - Send to Tesco shows a quick review of rule choices (with this week's offers) so you can override before anything is added

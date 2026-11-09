@@ -38,8 +38,8 @@ beforeAll(async () => {
   driver = new TescoDriver({ baseUrl: mock.url, dataDir: dir, headless: true, chromePath });
   sender = new Sender(store, driver, { min: 10, max: 20 });
   await driver.openSignIn();
-  await driver.type('a');
-  await driver.press('Enter');
+  await driver.fillSignIn('email', 'a@b.c');
+  await driver.fillSignIn('password', 'x');
   await new Promise((r) => setTimeout(r, 500));
 });
 afterAll(async () => {

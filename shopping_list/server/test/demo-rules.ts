@@ -38,7 +38,7 @@ await page.waitForTimeout(400);
 await shot('r0-viewer-starting');
 await page.waitForTimeout(3000);
 await shot('r1-viewer');
-await tesco.type('a'); await tesco.press('Enter'); await page.waitForTimeout(500);
+await tesco.fillSignIn('email', 'a@b.c'); await tesco.fillSignIn('password', 'x'); await page.waitForTimeout(500);
 
 await page.goto(base + '#list');
 await page.getByText('Shopping list').waitFor();

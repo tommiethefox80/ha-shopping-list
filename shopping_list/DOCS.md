@@ -23,12 +23,11 @@ There's a pause of 1.5–3.5 seconds between items, so it adds items at about th
 
 ### Signing in
 
-The add-on's browser keeps its own Tesco session, stored in `/data/browser-profile`. To sign in, open **Tesco → Sign in to Tesco**. You'll see a live picture of the add-on's browser:
+The add-on's browser keeps its own Tesco session, stored in `/data/browser-profile`. To sign in:
 
-- Tap a box on that picture to select it.
-- Type into the field below the picture and press **Type**.
-- Use the **Tab** and **Enter** buttons to move between boxes and submit.
-- Tap **I'm signed in** when you're done.
+1. Open **Tesco → Sign in to Tesco**. A live picture of the add-on's browser appears.
+2. Enter your Tesco email and tap **Next**, then your password and tap **Sign in**. These go straight into the boxes on Tesco's page.
+3. If Tesco asks for anything else, such as a one-time code, open **Something else**. Tap the box on the picture, then type into the field there.
 
 What you type is passed straight to Tesco. It isn't stored or logged. Tesco signs the browser out every so often, and Send will tell you when that happens.
 

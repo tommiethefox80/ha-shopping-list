@@ -225,8 +225,8 @@ export async function apiRoutes(app: FastifyInstance, d: Deps) {
   });
   app.get('/api/session/screen.jpg', async (_req, reply) => {
     try {
-      const jpg = await tesco.screenshot();
-      return reply.header('Cache-Control', 'no-store').type('image/jpeg').send(jpg);
+      const { image, stale } = await tesco.screenshot();
+      return reply.header('Cache-Control', 'no-store').header('X-Frame-Stale', stale ? '1' : '0').type('image/jpeg').send(image);
     } catch (e) {
       return fail(reply, 503, e);
     }
@@ -234,6 +234,11 @@ export async function apiRoutes(app: FastifyInstance, d: Deps) {
   app.post<{ Body: { x: number; y: number } }>('/api/session/click', async (req) => {
     await tesco.click(Number(req.body.x), Number(req.body.y));
     return { ok: true };
+  });
+  app.post<{ Body: { field: 'email' | 'password'; text: string } }>('/api/session/fill', async (req, reply) => {
+    const field = req.body?.field === 'password' ? 'password' : 'email';
+    const r = await tesco.fillSignIn(field, String(req.body?.text ?? '').slice(0, 200));
+    return r.ok ? r : reply.code(409).send({ error: r.message });
   });
   app.post<{ Body: { text: string } }>('/api/session/type', async (req) => {
     await tesco.type(String(req.body.text ?? '').slice(0, 200));

@@ -44,13 +44,12 @@ describe('Send to Tesco against a mock tesco.com', () => {
 
   it('signs in through the viewer controls', async () => {
     await driver.openSignIn();
-    await driver.type('tom@example.com');
-    await driver.press('Tab');
-    await driver.type('secret');
-    await driver.press('Enter');
+    expect(await driver.fillSignIn('password', 'x')).toMatchObject({ ok: false }); // not shown until email entered
+    expect(await driver.fillSignIn('email', 'tom@example.com')).toEqual({ ok: true });
+    expect(await driver.fillSignIn('password', 'secret')).toEqual({ ok: true });
     await new Promise((r) => setTimeout(r, 500));
     expect(await driver.isSignedIn()).toBe(true);
-    expect((await driver.screenshot()).length).toBeGreaterThan(1000);
+    expect((await driver.screenshot()).image.length).toBeGreaterThan(1000);
   });
 
   it('adds defaults, asks about unknowns, flags unavailable and ticks off', async () => {
@@ -112,7 +111,7 @@ describe('background browser start-up', () => {
       // Viewer asks for a frame while the browser is still starting and loading.
       await Promise.all([d.openSignIn(), d.screenshot().catch(() => null)]);
       const t = Date.now();
-      expect((await d.screenshot()).length).toBeGreaterThan(500);
+      expect((await d.screenshot()).image.length).toBeGreaterThan(500);
       expect(Date.now() - t).toBeLessThan(5000);
     } finally {
       await d.close();
