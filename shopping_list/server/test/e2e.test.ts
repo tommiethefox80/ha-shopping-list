@@ -102,3 +102,21 @@ describe('Send to Tesco against a mock tesco.com', () => {
     expect(r[0]).toMatchObject({ tescoId: '111111111', name: 'Tesco Houmous 200G', price: '£0.95', available: true });
   });
 });
+
+describe('background browser start-up', () => {
+  it('survives sign-in and a screenshot asked for at the same moment', async () => {
+    const m = await startMockTesco();
+    const dir = mkdtempSync(join(tmpdir(), 'shopping-list-race-'));
+    const d = new TescoDriver({ baseUrl: m.url, dataDir: dir, headless: true, chromePath });
+    try {
+      // Viewer asks for a frame while the browser is still starting and loading.
+      await Promise.all([d.openSignIn(), d.screenshot().catch(() => null)]);
+      const t = Date.now();
+      expect((await d.screenshot()).length).toBeGreaterThan(500);
+      expect(Date.now() - t).toBeLessThan(5000);
+    } finally {
+      await d.close();
+      await m.close();
+    }
+  });
+});

@@ -5,7 +5,9 @@ import { createServer, type Server } from 'node:http';
  * li[data-testid] search tiles, "add 1 <name>" buttons, a "Sign out" header link,
  * basket updates via POST /bff, and a redirect to /account/auth/... when signed out.
  */
-export const CATALOGUE: Record<string, { name: string; price: string; available: boolean }> = {
+export const CATALOGUE: Record<string, { name: string; price: string; available: boolean; offer?: string }> = {
+  '288089822': { name: 'Pampers Baby-Dry Size 6 Nappies 33 Pack', price: '£11.00', available: true, offer: '£5.50 Half Price Clubcard Price' },
+  '333333333': { name: 'Fred & Flo Ultra Dry Nappies Size 6 30 Pack', price: '£2.85', available: true },
   '275205504': { name: 'Branston Baked Beans In Tomato Sauce 410G', price: '£1.50', available: true },
   '251825089': { name: 'Tesco Italian Chopped Tomatoes 400G', price: '£0.47', available: true },
   '254656399': { name: 'Tesco British Whole Milk 2.272L, 4 Pints', price: '£1.75', available: true },
@@ -37,7 +39,7 @@ export function startMockTesco(): Promise<MockTesco> {
   const server: Server = createServer((req, res) => {
     const url = new URL(req.url ?? '/', 'http://x');
     const signedIn = (req.headers.cookie ?? '').includes(`signed=${epoch}`);
-    const html = (s: string) => res.writeHead(200, { 'content-type': 'text/html' }).end(s);
+    const html = (s: string) => res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }).end(s);
     const p = url.pathname.replace('/shop/', '/groceries/');
 
     if (p === '/account/auth/en-GB/login' && req.method === 'GET') {
@@ -53,11 +55,12 @@ export function startMockTesco(): Promise<MockTesco> {
     }
     if (p === '/groceries/en-GB/search') {
       const q = (url.searchParams.get('query') ?? '').toLowerCase();
-      const words = q.split(/\s+/).filter(Boolean);
+      const words = q.split(/\s+/).filter((w) => w.length > 2 && !['and', 'size', 'pack', 'the'].includes(w));
       const tiles = Object.entries(CATALOGUE)
         .filter(([, v]) => words.some((w) => v.name.toLowerCase().includes(w)))
+        .sort(([, a], [, b]) => words.filter((w) => b.name.toLowerCase().includes(w)).length - words.filter((w) => a.name.toLowerCase().includes(w)).length)
         .map(([id, v]) => `<li data-testid="${id}" data-auto-available="${v.available}"><img src="https://example.test/${id}.jpg">
-          <a href="/shop/en-GB/products/${id}">${v.name}</a><p>${v.price}</p>${v.available ? addButton(id, v.name) : '<p>Unavailable</p>'}</li>`)
+          <a href="/shop/en-GB/products/${id}">${v.name}</a>${v.offer ? `<p>${v.offer}</p><p>Offer valid for delivery from 10/10/2026 until 01/12/2026</p>` : ''}<p>${v.price}</p>${v.available ? addButton(id, v.name) : '<p>Unavailable</p>'}</li>`)
         .join('');
       return html(page('Results', signedIn, tiles ? `<ul>${tiles}</ul>` : '<p>Sorry, no results found</p>'));
     }

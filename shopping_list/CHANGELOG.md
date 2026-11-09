@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.0
+- Rules: "use this instead when it's on offer" on any product, e.g. Pampers if on offer, otherwise Fred & Flo
+- Send to Tesco shows a quick review of rule choices (with this week's offers) so you can override before anything is added
+- Fix Tesco sign-in viewer showing a broken image: the browser could be launched twice at once, and screenshots stalled while Tesco was loading
+- Sign-in viewer now shows what it's doing (and any error) instead of a broken image; errors are written to the add-on log
+
 ## 1.0.1
 - Fix install on Home Assistant: build from the Playwright image regardless of the base image Supervisor passes in
 - Fix start-up hang: start the virtual display directly

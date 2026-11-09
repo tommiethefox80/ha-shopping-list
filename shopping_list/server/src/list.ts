@@ -128,9 +128,11 @@ export class ShoppingList {
   }
 
   /** What each open item will be sent as, for display. */
-  resolve(item: Item): { tescoId?: string; tescoName?: string; productId?: string } {
+  resolve(item: Item): { tescoId?: string; tescoName?: string; productId?: string; swaps?: string[] } {
     if (item.oneOffTescoId) return { tescoId: item.oneOffTescoId, tescoName: item.oneOffTescoName };
     const p: Product | undefined = findProduct(this.store.data.products, item);
-    return p ? { tescoId: p.tescoId, tescoName: p.tescoName, productId: p.id } : {};
+    return p
+      ? { tescoId: p.tescoId, tescoName: p.tescoName, productId: p.id, swaps: p.offerSwaps?.map((s) => s.tescoName) }
+      : {};
   }
 }

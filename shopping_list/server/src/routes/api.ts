@@ -4,6 +4,8 @@ import { newId, now } from '../domain.js';
 import type { ShoppingList } from '../list.js';
 import { clampQty, normalize, parseTescoId } from '../matching.js';
 import { lookupBarcode } from '../openfoodfacts.js';
+import { decide, hasRule } from '../rules.js';
+import { findProduct } from '../matching.js';
 import type { Sender } from '../sender.js';
 import type { Store } from '../store.js';
 import type { TescoClient } from '../tesco/driver.js';
@@ -16,8 +18,11 @@ export interface Deps {
   session: { signedIn: boolean | null; checkedAt?: string };
 }
 
-const fail = (reply: FastifyReply, code: number, e: unknown) =>
-  reply.code(code).send({ error: e instanceof Error ? e.message.split('\n')[0] : String(e) });
+const fail = (reply: FastifyReply, code: number, e: unknown) => {
+  const error = e instanceof Error ? e.message.split('\n')[0] : String(e);
+  if (code >= 500) reply.log.error({ err: e }, error); // shows in the add-on's Log tab
+  return reply.code(code).send({ error });
+};
 
 export async function apiRoutes(app: FastifyInstance, d: Deps) {
   const { store, list, sender, tesco, session } = d;
@@ -83,6 +88,10 @@ export async function apiRoutes(app: FastifyInstance, d: Deps) {
   // ----- defaults / usuals -----
   type ProductBody = Partial<Omit<Product, 'id' | 'createdAt' | 'updatedAt'>> & { tescoUrl?: string };
   const cleanList = (xs?: string[]) => [...new Set((xs ?? []).map((s) => s.trim()).filter(Boolean))];
+  const cleanSwaps = (xs?: { tescoId: string; tescoName: string }[]) =>
+    (xs ?? [])
+      .map((x) => ({ tescoId: parseTescoId(String(x.tescoId)) ?? '', tescoName: String(x.tescoName ?? '').trim() }))
+      .filter((x) => x.tescoId && x.tescoName);
 
   app.post<{ Body: ProductBody }>('/api/products', async (req, reply) => {
     const b = req.body;
@@ -106,6 +115,7 @@ export async function apiRoutes(app: FastifyInstance, d: Deps) {
     const product: Product = {
       id: newId(), label, aliases: cleanList(b.aliases), tescoId, tescoName, price, imageUrl,
       eans: cleanList(b.eans), defaultQty: clampQty(b.defaultQty ?? 1), usual: !!b.usual, createdAt: t, updatedAt: t,
+      offerSwaps: cleanSwaps(b.offerSwaps),
     };
     store.update((db) => db.products.push(product));
     return product;
@@ -126,6 +136,7 @@ export async function apiRoutes(app: FastifyInstance, d: Deps) {
         if (b.eans) p.eans = cleanList(b.eans);
         if (b.defaultQty !== undefined) p.defaultQty = clampQty(b.defaultQty);
         if (b.usual !== undefined) p.usual = !!b.usual;
+        if (b.offerSwaps !== undefined) p.offerSwaps = cleanSwaps(b.offerSwaps);
         if (newTescoId) {
           p.tescoId = newTescoId;
           p.tescoName = b.tescoName ?? lookup?.name ?? p.tescoName;
@@ -160,9 +171,30 @@ export async function apiRoutes(app: FastifyInstance, d: Deps) {
   });
 
   // ----- send -----
-  app.post<{ Body: { itemIds?: string[] } }>('/api/send', async (req, reply) => {
+  // Items whose product has a rule: check offers now so the review sheet can show the choice.
+  app.post<{ Body: { itemIds?: string[] } }>('/api/send/plan', async (req, reply) => {
+    if (sender.state.running) return fail(reply, 409, 'A send is already running');
+    const open = store.data.items.filter(
+      (i) => ['todo', 'error', 'unavailable'].includes(i.status) && (!req.body?.itemIds || req.body.itemIds.includes(i.id)),
+    );
+    const out = [];
     try {
-      return sender.start(req.body?.itemIds);
+      for (const item of open) {
+        if (item.oneOffTescoId) continue;
+        const product = findProduct(store.data.products, item);
+        if (!hasRule(product)) continue;
+        const d = await decide(product, tesco, true);
+        out.push({ itemId: item.id, itemName: item.name, qty: item.qty, chosen: d.tescoId, reason: d.reason, options: d.options });
+      }
+      return out;
+    } catch (e) {
+      return fail(reply, 502, e);
+    }
+  });
+
+  app.post<{ Body: { itemIds?: string[]; choices?: Record<string, string> } }>('/api/send', async (req, reply) => {
+    try {
+      return sender.start(req.body?.itemIds, req.body?.choices ?? {});
     } catch (e) {
       return fail(reply, 409, e);
     }

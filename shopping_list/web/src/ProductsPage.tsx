@@ -36,6 +36,7 @@ export function ProductsPage({ state, act }: PageProps) {
                   {p.eans.length > 0 && <> · {p.eans.length} barcode{p.eans.length > 1 ? 's' : ''}</>}
                 </div>
               )}
+              {p.offerSwaps?.length ? <div className="small rule">↔ {p.offerSwaps.map((x) => x.tescoName).join(' / ')} if on offer</div> : null}
             </div>
             <button
               className={`star ${p.usual ? 'on' : ''}`}
@@ -65,6 +66,8 @@ function ProductEditor({ product, act, onClose }: { product?: Product; act: Page
     product && { tescoId: product.tescoId, tescoName: product.tescoName },
   );
   const [changing, setChanging] = useState(!product);
+  const [swaps, setSwaps] = useState(product?.offerSwaps ?? []);
+  const [addingSwap, setAddingSwap] = useState(false);
   const [scanning, setScanning] = useState(false);
 
   const save = () => {
@@ -72,6 +75,7 @@ function ProductEditor({ product, act, onClose }: { product?: Product; act: Page
     const body = {
       label, aliases: aliases.split(',').map((s) => s.trim()).filter(Boolean), defaultQty: qty, usual, eans,
       tescoId: tesco.tescoId, tescoName: tesco.tescoName || undefined, price: tesco.price, imageUrl: tesco.imageUrl,
+      offerSwaps: swaps,
     };
     void act(() => (product ? api.patch(`products/${product.id}`, body) : api.post('products', body)), 'Saved').then(onClose);
   };
@@ -106,6 +110,36 @@ function ProductEditor({ product, act, onClose }: { product?: Product; act: Page
               setChanging(false);
             }}
           />
+        )}
+
+        <h3>Rule: use instead when on offer</h3>
+        <p className="muted small">
+          When you send to Tesco, if one of these is on offer (Clubcard Price, half price, multibuy…) it's used instead of the
+          product above. You see the choice and can change it before anything is added.
+        </p>
+        {swaps.length > 0 && (
+          <ul className="swaps">
+            {swaps.map((sw, i) => (
+              <li key={sw.tescoId}>
+                <span className="grow">{i === 0 ? 'Use' : 'or'} <strong>{sw.tescoName}</strong> if on offer</span>
+                <button className="link" onClick={() => setSwaps(swaps.filter((x) => x.tescoId !== sw.tescoId))}>Remove</button>
+              </li>
+            ))}
+            <li className="muted small">otherwise {tesco?.tescoName || 'the product above'}</li>
+          </ul>
+        )}
+        {addingSwap ? (
+          <TescoSearch
+            initial={label}
+            onPick={(c) => {
+              if (c.name && c.tescoId !== tesco?.tescoId && !swaps.some((x) => x.tescoId === c.tescoId)) {
+                setSwaps([...swaps, { tescoId: c.tescoId, tescoName: c.name }]);
+              }
+              setAddingSwap(false);
+            }}
+          />
+        ) : (
+          <button className="secondary" onClick={() => setAddingSwap(true)}>+ Add an "if on offer" product</button>
         )}
 
         <h3>Barcodes</h3>

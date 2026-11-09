@@ -5,6 +5,7 @@ A shared shopping list for the household, which runs as a Home Assistant add-on 
 - **The list comes first.** Type items ("2 beans" sets the quantity), scan barcodes with the phone camera, and tick things off by hand when you shop in store.
 - **Usuals bar** at the top of the list. Tap a chip to add one item, or tap **+ Add all** for the whole weekly set.
 - **Products** page that records what each name means. For example, "beans" means *Branston Baked Beans In Tomato Sauce 410G* and "chopped tomatoes" means product 251825089. Each product can have other names, a usual quantity, a ★ usual flag and barcodes.
+- **Rules**: "use this instead when it's on offer". For example, Nappies → Fred & Flo, but Pampers when Pampers are on offer. When you press Send, a review sheet shows what each rule picked, with this week's offers, so you can change it before anything is added.
 - **Send to Tesco** (secondary). Adds every unticked item to your Tesco.com basket and ticks each one off as it goes in. You then book a slot and check out on Tesco as usual.
 
 ## How Send to Tesco works
@@ -15,7 +16,8 @@ Tesco has no public API, so the add-on runs its own Chromium browser through Pla
 2. For each item it works out which product you mean, in this order: a product chosen for that item → the barcode → the item name or one of the product's other names (plurals are ignored).
 3. If the item has a product, it opens that product's page and clicks **Add** once per unit of quantity. It waits for Tesco to confirm the basket change before ticking the item off.
 4. If the item has no product yet, it searches Tesco and marks the item **Pick product**. Tap the item, choose one of the results, and leave **Remember as the default** ticked so the choice is saved for next time.
-5. Unavailable products are flagged on the list and left there.
+5. If the product has an "if on offer" rule, it checks the offer products' search results on Tesco first. The first one that's on offer and in stock is used instead. If you pressed Send in the app, you'll already have confirmed or changed this choice on the review sheet.
+6. Unavailable products are flagged on the list and left there.
 
 There's a pause of 1.5–3.5 seconds between items, so it adds items at about the speed a person would.
 

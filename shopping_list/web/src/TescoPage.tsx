@@ -9,7 +9,9 @@ export function TescoPage({ state, act }: PageProps) {
   const [text, setText] = useState('');
   const [secret, setSecret] = useState(true);
   const [busy, setBusy] = useState(false);
-  const img = useRef<HTMLImageElement>(null);
+  const [src, setSrc] = useState<string>();
+  const [viewerMsg, setViewerMsg] = useState<string>();
+  const lastUrl = useRef<string | undefined>(undefined);
   const { session, job } = state;
 
   // Refresh the screenshot while the viewer is open (and faster during a send).
@@ -19,10 +21,36 @@ export function TescoPage({ state, act }: PageProps) {
     return () => clearInterval(t);
   }, [viewer, job.running]);
 
+  // Fetch each frame ourselves so a failure shows a message, not a broken image.
+  useEffect(() => {
+    if (!viewer) return;
+    let cancelled = false;
+    fetch(`api/session/screen.jpg?f=${frame}`)
+      .then(async (r) => {
+        if (cancelled) return;
+        if (!r.ok) {
+          const body = await r.json().catch(() => ({}));
+          setViewerMsg((body as { error?: string }).error ?? `Couldn't get a picture (HTTP ${r.status})`);
+          return;
+        }
+        const url = URL.createObjectURL(await r.blob());
+        if (lastUrl.current) URL.revokeObjectURL(lastUrl.current);
+        lastUrl.current = url;
+        setSrc(url);
+        setViewerMsg(undefined);
+      })
+      .catch((e: Error) => !cancelled && setViewerMsg(e.message));
+    return () => {
+      cancelled = true;
+    };
+  }, [viewer, frame]);
+
   const run = async (fn: () => Promise<unknown>) => {
     setBusy(true);
     try {
       await fn();
+    } catch (e) {
+      setViewerMsg((e as Error).message);
     } finally {
       setBusy(false);
       setFrame((f) => f + 1);
@@ -57,7 +85,12 @@ export function TescoPage({ state, act }: PageProps) {
       {viewer && (
         <div className="viewer">
           <p className="muted small">Tap a box on the page to select it, type below, then use Tab / Enter. What you type goes straight to Tesco and is never saved.</p>
-          <img ref={img} src={`api/session/screen.jpg?f=${frame}`} alt="Tesco sign-in page" onClick={tap} />
+          {viewerMsg && <p className="notice warn">{viewerMsg}</p>}
+          {src ? (
+            <img src={src} alt="The add-on's browser" onClick={tap} />
+          ) : (
+            <p className="muted center">Starting the browser and opening Tesco… this can take 20–30 seconds the first time.</p>
+          )}
           <form className="row" onSubmit={(e) => { e.preventDefault(); const t = text; setText(''); void run(() => api.post('session/type', { text: t })); }}>
             <input type={secret ? 'password' : 'text'} autoComplete="off" placeholder="Text to type into the selected box" value={text} onChange={(e) => setText(e.target.value)} />
             <button type="button" className="ghost" onClick={() => setSecret(!secret)}>{secret ? '👁' : '🙈'}</button>

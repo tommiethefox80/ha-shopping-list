@@ -7,6 +7,7 @@ export interface Candidate {
   clubcardPrice?: string;
   imageUrl?: string;
   available: boolean;
+  offer?: string;
 }
 
 export interface Item {
@@ -20,7 +21,7 @@ export interface Item {
   message?: string;
   candidates?: Candidate[];
   createdAt: string;
-  resolved: { tescoId?: string; tescoName?: string; productId?: string };
+  resolved: { tescoId?: string; tescoName?: string; productId?: string; swaps?: string[] };
 }
 
 export interface Product {
@@ -34,6 +35,20 @@ export interface Product {
   eans: string[];
   defaultQty: number;
   usual: boolean;
+  offerSwaps?: { tescoId: string; tescoName: string }[];
+}
+
+export interface PlanOption extends Candidate {
+  isMain: boolean;
+}
+
+export interface PlanEntry {
+  itemId: string;
+  itemName: string;
+  qty: number;
+  chosen: string;
+  reason: string;
+  options: PlanOption[];
 }
 
 export interface JobState {

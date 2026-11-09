@@ -9,6 +9,8 @@ export interface Candidate {
   clubcardPrice?: string;
   imageUrl?: string;
   available: boolean;
+  /** Offer label from Tesco, e.g. "£5.50 Half Price Clubcard Price" or "2 for £20 Clubcard Price". */
+  offer?: string;
 }
 
 /** A line on the shopping list. */
@@ -42,6 +44,8 @@ export interface Product {
   imageUrl?: string;
   eans: string[];
   defaultQty: number;
+  /** Rule: use one of these instead of the main product when it's on offer (first match wins). */
+  offerSwaps?: { tescoId: string; tescoName: string }[];
   /** Shown in the "Usuals" bar at the top of the list. */
   usual: boolean;
   createdAt: string;

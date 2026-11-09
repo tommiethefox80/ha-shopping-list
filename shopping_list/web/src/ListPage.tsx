@@ -2,6 +2,7 @@ import { lazy, Suspense, useMemo, useState } from 'react';
 import { api } from './api';
 import type { PageProps } from './App';
 import { ItemSheet } from './ItemSheet';
+import { SendReview } from './SendReview';
 import type { Item } from './types';
 
 const Scanner = lazy(() => import('./Scanner').then((m) => ({ default: m.Scanner })));
@@ -13,6 +14,7 @@ export function ListPage({ state, act, go }: PageProps) {
   const [scanning, setScanning] = useState(false);
   const [editing, setEditing] = useState<string>();
   const [showDone, setShowDone] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
 
   const open = state.items.filter((i) => OPEN.includes(i.status));
   const done = state.items.filter((i) => !OPEN.includes(i.status));
@@ -99,7 +101,10 @@ export function ListPage({ state, act, go }: PageProps) {
             <button
               className="secondary wide"
               disabled={open.length === 0}
-              onClick={() => act(() => api.post('send'))}
+              onClick={() =>
+                // Items with an "if on offer" rule get a quick review first; otherwise send straight away.
+                open.some((i) => i.resolved.swaps?.length && i.status !== 'needs_product') ? setReviewing(true) : act(() => api.post('send'))
+              }
             >
               🛒 Send {open.length || ''} to Tesco basket
             </button>
@@ -124,6 +129,7 @@ export function ListPage({ state, act, go }: PageProps) {
           }}
         /></Suspense>
       )}
+      {reviewing && <SendReview act={act} onClose={() => setReviewing(false)} />}
       {editingItem && <ItemSheet item={editingItem} state={state} act={act} onClose={() => setEditing(undefined)} />}
     </>
   );
@@ -149,6 +155,7 @@ function ItemRow({ item, act, onOpen }: { item: Item; act: PageProps['act']; onO
           {item.status === 'unavailable' && <span className="pill warn">Unavailable</span>}
           {item.status === 'error' && <span className="pill bad">Problem</span>}
           <span className="muted">{item.status === 'todo' || item.status === 'ticked' ? item.resolved.tescoName ?? 'No default product' : item.message ?? item.resolved.tescoName}</span>
+          {item.status === 'todo' && item.resolved.swaps?.length ? <span className="rule"> · or {item.resolved.swaps.join(' / ')} if on offer</span> : null}
         </div>
       </div>
       {!ticked && (

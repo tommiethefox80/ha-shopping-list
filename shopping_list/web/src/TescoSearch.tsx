@@ -49,7 +49,7 @@ export function CandidateList({ candidates, onPick }: { candidates: Candidate[];
             <div>{c.name}</div>
             <div className="muted small">
               {c.price}
-              {c.clubcardPrice && <span className="clubcard"> {c.clubcardPrice} Clubcard</span>}
+              {c.offer ? <span className="offer"> {c.offer}</span> : c.clubcardPrice && <span className="clubcard"> {c.clubcardPrice} Clubcard</span>}
               {!c.available && <span className="pill warn">Unavailable</span>}
             </div>
           </div>

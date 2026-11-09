@@ -1,6 +1,7 @@
 import type { Item } from './domain.js';
 import { now } from './domain.js';
 import { findProduct } from './matching.js';
+import { decide, hasRule } from './rules.js';
 import type { Store } from './store.js';
 import { SessionExpiredError, type TescoClient } from './tesco/driver.js';
 
@@ -32,6 +33,7 @@ const SENDABLE: Item['status'][] = ['todo', 'error', 'unavailable', 'needs_produ
 export class Sender {
   state: JobState = { running: false, total: 0, processed: 0, added: 0, needsProduct: 0, failed: 0, log: [] };
   private cancelRequested = false;
+  private overrides: Record<string, string> = {};
 
   constructor(
     private readonly store: Store,
@@ -40,12 +42,14 @@ export class Sender {
     private readonly onSignedIn: (signedIn: boolean) => void = () => {},
   ) {}
 
-  start(itemIds?: string[]): JobState {
+  /** overrides: itemId -> Tesco product id picked in the review sheet for this send. */
+  start(itemIds?: string[], overrides: Record<string, string> = {}): JobState {
     if (this.state.running) throw new Error('A send is already running');
     const ids = this.store.data.items
       .filter((i) => SENDABLE.includes(i.status) && (!itemIds || itemIds.includes(i.id)))
       .map((i) => i.id);
     this.cancelRequested = false;
+    this.overrides = overrides;
     this.state = {
       running: true, startedAt: now(), total: ids.length, processed: 0, added: 0, needsProduct: 0, failed: 0, log: [],
     };
@@ -96,7 +100,14 @@ export class Sender {
         this.state.current = item.name;
 
         const product = findProduct(this.store.data.products, item);
-        const tescoId = item.oneOffTescoId ?? product?.tescoId;
+        let tescoId = this.overrides[id] ?? item.oneOffTescoId ?? product?.tescoId;
+        if (!this.overrides[id] && !item.oneOffTescoId && hasRule(product)) {
+          this.state.current = `${item.name} (checking offers)`;
+          const d = await decide(product, this.tesco);
+          tescoId = d.tescoId;
+          this.log('info', `${item.name}: ${d.reason}`);
+          this.state.current = item.name;
+        }
 
         if (!tescoId) {
           const query = item.name.startsWith('Barcode ') && item.ean ? item.ean : item.name;

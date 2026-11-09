@@ -90,3 +90,15 @@ progress { width: 100%; height: 10px; }
 .tabs .ico { font-size: 1.2rem; }
 .tabs .dot { position: absolute; top: 6px; right: calc(50% - 18px); width: 8px; height: 8px; border-radius: 50%; background: var(--red); }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(84px + env(safe-area-inset-bottom)); background: #222; color: #fff; padding: 10px 16px; border-radius: 10px; z-index: 30; max-width: 90vw; font-size: .9rem; }
+
+.offer { color: #c8102e; font-weight: 600; }
+@media (prefers-color-scheme: dark) { .offer { color: #ff8a95; } }
+.rule { color: var(--blue); }
+@media (prefers-color-scheme: dark) { .rule { color: #9cc3ef; } }
+.swaps { list-style: none; padding: 0; margin: 6px 0; }
+.swaps li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.review { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 4px 12px 8px; margin-bottom: 10px; }
+.review h3 { margin: 10px 0 2px; }
+.option { display: flex; gap: 10px; align-items: flex-start; padding: 10px 8px; border-radius: 10px; color: var(--text); font-size: .95rem; margin: 4px 0 0; }
+.option input { width: auto; margin-top: 3px; }
+.option.on { background: var(--blue-2); }

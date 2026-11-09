@@ -20,6 +20,8 @@ export interface TescoClient {
   isSignedIn(): Promise<boolean>;
   search(query: string, limit?: number): Promise<Candidate[]>;
   product(tescoId: string): Promise<Candidate | null>;
+  /** Price/offer for one product, read from its search-results tile. */
+  offerFor(tescoId: string, name: string): Promise<Candidate | null>;
   addToBasket(tescoId: string, qty: number): Promise<AddResult>;
   /** Remote sign-in viewer */
   openSignIn(): Promise<void>;
@@ -70,14 +72,25 @@ export class TescoDriver implements TescoClient {
     this.origin = new URL(opts.baseUrl).origin;
   }
 
-  private async getPage(): Promise<Page> {
-    if (!this.ctx) {
-      const profile = join(this.opts.dataDir, 'browser-profile');
-      // A container restart leaves Chromium's single-instance locks behind; clear them.
-      for (const f of ['SingletonLock', 'SingletonSocket', 'SingletonCookie']) {
-        rmSync(join(profile, f), { force: true });
-      }
-      this.ctx = await chromium.launchPersistentContext(profile, {
+  private launching?: Promise<BrowserContext>;
+
+  /** Launch once, even if several callers ask at the same moment (e.g. sign-in + first screenshot). */
+  private getContext(): Promise<BrowserContext> {
+    if (this.ctx) return Promise.resolve(this.ctx);
+    this.launching ??= this.launch().finally(() => {
+      this.launching = undefined;
+    });
+    return this.launching;
+  }
+
+  private async launch(): Promise<BrowserContext> {
+    const profile = join(this.opts.dataDir, 'browser-profile');
+    // A container restart leaves Chromium's single-instance locks behind; clear them.
+    for (const f of ['SingletonLock', 'SingletonSocket', 'SingletonCookie']) {
+      rmSync(join(profile, f), { force: true });
+    }
+    try {
+      const ctx = await chromium.launchPersistentContext(profile, {
         headless: this.opts.headless,
         executablePath: this.opts.chromePath,
         viewport: VIEWPORT,
@@ -85,13 +98,22 @@ export class TescoDriver implements TescoClient {
         timezoneId: 'Europe/London',
         args: ['--disable-blink-features=AutomationControlled', '--no-first-run', '--disable-dev-shm-usage'],
       });
-      this.ctx.on('close', () => {
+      ctx.on('close', () => {
         this.ctx = undefined;
         this.page = undefined;
       });
+      this.ctx = ctx;
+      return ctx;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      throw new Error(`Couldn't start the background browser: ${msg.split('\n').slice(0, 3).join(' ')}`);
     }
+  }
+
+  private async getPage(): Promise<Page> {
+    const ctx = await this.getContext();
     if (!this.page || this.page.isClosed()) {
-      this.page = this.ctx.pages()[0] ?? (await this.ctx.newPage());
+      this.page = ctx.pages()[0] ?? (await ctx.newPage());
     }
     return this.page;
   }
@@ -168,6 +190,11 @@ export class TescoDriver implements TescoClient {
       if (found !== 'tiles') return [];
       return page.evaluate(scrapeTiles, limit);
     });
+  }
+
+  async offerFor(tescoId: string, name: string): Promise<Candidate | null> {
+    const results = await this.search(name, 24);
+    return results.find((c) => c.tescoId === tescoId) ?? null;
   }
 
   product(tescoId: string): Promise<Candidate | null> {
@@ -256,10 +283,24 @@ export class TescoDriver implements TescoClient {
     });
   }
 
-  /** Not mutex-guarded on purpose: lets you watch a send job live. */
+  private lastFrame?: Buffer;
+
+  /**
+   * A picture of the background browser for the sign-in viewer. Screenshots can stall while a
+   * slow, script-heavy page (like Tesco's sign-in) is mid-navigation, so give up quickly and
+   * return the last good frame instead; the viewer just asks again a moment later.
+   * Not mutex-guarded on purpose: lets you watch sign-in and send jobs live.
+   */
   async screenshot(): Promise<Buffer> {
     const page = await this.getPage();
-    return page.screenshot({ type: 'jpeg', quality: 60, timeout: 10_000 });
+    try {
+      const frame = await withTimeout(page.screenshot({ type: 'jpeg', quality: 60, timeout: 3000, animations: 'disabled' }), 4000);
+      this.lastFrame = frame;
+      return frame;
+    } catch {
+      if (this.lastFrame) return this.lastFrame;
+      throw new Error('Tesco is still loading…');
+    }
   }
 
   click(xRatio: number, yRatio: number): Promise<void> {
@@ -292,6 +333,22 @@ export class TescoDriver implements TescoClient {
   }
 }
 
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error('timeout')), ms);
+    p.then(
+      (v) => {
+        clearTimeout(t);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(t);
+        reject(e);
+      },
+    );
+  });
+}
+
 /** Runs in the page: read product tiles from a search results page. */
 function scrapeTiles(limit: number): Candidate[] {
   const out = new Map<string, Candidate>();
@@ -305,12 +362,17 @@ function scrapeTiles(limit: number): Candidate[] {
     const text = (li as HTMLElement).innerText ?? li.textContent ?? '';
     const img = li.querySelector('img') as HTMLImageElement | null;
     const club = text.match(/(£\d+\.\d{2})[^\n£]*Clubcard Price/i)?.[1];
+    const offer = text
+      .split('\n')
+      .map((l) => l.trim())
+      .find((l) => /clubcard price|half price|price cut|was £|save £|\d+ for £|any \d+ for/i.test(l) && !/price match/i.test(l));
     const prices = text.match(/£\d+\.\d{2}/g) ?? [];
     out.set(id, {
       tescoId: id,
       name: named ?? id,
       price: prices.find((p) => p !== club) ?? prices[0],
       clubcardPrice: club,
+      offer,
       imageUrl: img?.src || undefined,
       available:
         li.getAttribute('data-auto-available') !== 'false' && !!li.querySelector('button[aria-label^="add 1" i]'),
