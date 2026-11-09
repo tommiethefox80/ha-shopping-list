@@ -4,27 +4,29 @@ import { useEffect, useRef, useState } from 'react';
 
 interface Props {
   title: string;
+  /** 'products' = supermarket barcodes only (faster, fewer misreads); 'any' = loyalty cards, QR etc. */
+  formats?: 'products' | 'any';
   /** Keep the camera open and accept several barcodes (list mode). */
   continuous?: boolean;
-  onCode: (ean: string) => Promise<string | void> | void;
+  onCode: (code: string, format: string) => Promise<string | void> | void;
   onClose: () => void;
 }
 
 const hints = new Map([[DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.UPC_A, BarcodeFormat.UPC_E]]]);
 
-export function Scanner({ title, continuous, onCode, onClose }: Props) {
+export function Scanner({ title, continuous, formats = 'products', onCode, onClose }: Props) {
   const video = useRef<HTMLVideoElement>(null);
   const [error, setError] = useState<string>();
   const [last, setLast] = useState<string>();
   const [manual, setManual] = useState('');
   const recent = useRef(new Map<string, number>());
 
-  const handle = async (code: string) => {
+  const handle = async (code: string, format = 'EAN_13') => {
     const seen = recent.current.get(code);
     if (seen && Date.now() - seen < 3000) return; // same pack still in view
     recent.current.set(code, Date.now());
     navigator.vibrate?.(60);
-    const msg = await onCode(code);
+    const msg = await onCode(code, format);
     setLast(msg || `Scanned ${code}`);
     if (!continuous) onClose();
   };
@@ -36,10 +38,10 @@ export function Scanner({ title, continuous, onCode, onClose }: Props) {
     }
     let controls: IScannerControls | undefined;
     let stopped = false;
-    const reader = new BrowserMultiFormatReader(hints, { delayBetweenScanAttempts: 150 });
+    const reader = new BrowserMultiFormatReader(formats === 'products' ? hints : undefined, { delayBetweenScanAttempts: 150 });
     reader
       .decodeFromConstraints({ video: { facingMode: { ideal: 'environment' } } }, video.current!, (result) => {
-        if (result && !stopped) void handle(result.getText());
+        if (result && !stopped) void handle(result.getText(), BarcodeFormat[result.getBarcodeFormat()]);
       })
       .then((c) => {
         controls = c;
@@ -71,12 +73,12 @@ export function Scanner({ title, continuous, onCode, onClose }: Props) {
           className="row"
           onSubmit={(e) => {
             e.preventDefault();
-            const code = manual.replace(/\D/g, '');
+            const code = formats === 'products' ? manual.replace(/\D/g, '') : manual.trim();
             if (code) void handle(code);
             setManual('');
           }}
         >
-          <input inputMode="numeric" placeholder="Or type the barcode number" value={manual} onChange={(e) => setManual(e.target.value)} />
+          <input inputMode={formats === 'products' ? 'numeric' : 'text'} placeholder="Or type the number" value={manual} onChange={(e) => setManual(e.target.value)} />
           <button type="submit">Add</button>
         </form>
       </div>

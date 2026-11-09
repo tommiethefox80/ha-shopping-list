@@ -151,3 +151,10 @@ textarea { padding: 11px 12px; border: 1px solid var(--line); border-radius: 10p
 .pick li { border-bottom: 1px solid var(--line); }
 .pick label.check { padding: 8px 0; margin: 0; align-items: flex-start; }
 .pick .pill { margin-left: 6px; }
+.notice.offline { background: #fff6d6; color: #5c4400; position: sticky; top: 0; z-index: 6; }
+@media (prefers-color-scheme: dark) { .notice.offline { background: #3a3110; color: #ffe08a; } }
+.head-right { margin: 0; gap: 10px; flex-wrap: nowrap; }
+.card-btn { background: var(--blue-2); padding: 6px 10px; font-size: 1.1rem; }
+.card-full { position: fixed; inset: 0; z-index: 40; background: #fff; color: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; }
+.card-full h2 { color: #000; margin-bottom: 16px; }
+.barcode svg { max-width: 92vw; height: auto; }

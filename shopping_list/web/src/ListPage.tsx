@@ -2,6 +2,7 @@ import { lazy, Suspense, useMemo, useState } from 'react';
 import { api } from './api';
 import type { PageProps } from './App';
 import { AislesSheet } from './AislesSheet';
+import { CardsSheet } from './CardsSheet';
 import { ItemSheet } from './ItemSheet';
 import { ListsSheet } from './ListsSheet';
 import type { Category, Item } from './types';
@@ -15,7 +16,7 @@ export function ListPage(props: PageProps) {
   const [scanning, setScanning] = useState(false);
   const [editing, setEditing] = useState<string>();
   const [showDone, setShowDone] = useState(false);
-  const [sheet, setSheet] = useState<'lists' | 'aisles'>();
+  const [sheet, setSheet] = useState<'lists' | 'aisles' | 'cards'>();
   const [showActivity, setShowActivity] = useState(false);
 
   const items = state.items.filter((i) => i.listId === list.id);
@@ -57,7 +58,10 @@ export function ListPage(props: PageProps) {
           <h1>{list.name}</h1>
           <span className="caret">▾</span>
         </button>
-        <span className="muted">{open.length} to get</span>
+        <span className="row head-right">
+          <span className="muted">{open.length} to get</span>
+          <button className="card-btn" aria-label="Loyalty cards" onClick={() => setSheet('cards')}>💳</button>
+        </span>
       </header>
 
       <form className="add-bar" onSubmit={add}>
@@ -197,6 +201,7 @@ export function ListPage(props: PageProps) {
       {editingItem && <ItemSheet {...props} item={editingItem} onClose={() => setEditing(undefined)} />}
       {sheet === 'lists' && <ListsSheet {...props} onClose={() => setSheet(undefined)} onArrange={() => setSheet('aisles')} />}
       {sheet === 'aisles' && <AislesSheet {...props} onClose={() => setSheet(undefined)} />}
+      {sheet === 'cards' && <CardsSheet {...props} onClose={() => setSheet(undefined)} />}
     </>
   );
 }

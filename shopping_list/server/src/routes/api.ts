@@ -8,7 +8,7 @@ import type { Photos } from '../photos.js';
 import type { Store } from '../store.js';
 import { dueSuggestions, frequentNames } from '../suggestions.js';
 import { importRecipe, ingredientName, isStaple } from '../recipes.js';
-import type { Recipe } from '../domain.js';
+import type { LoyaltyCard, Recipe } from '../domain.js';
 
 export interface Deps {
   store: Store;
@@ -60,6 +60,7 @@ export async function apiRoutes(app: FastifyInstance, d: Deps) {
       ha: d.haStatus?.() ?? null,
       recipes: db.recipes.map((r) => ({ ...r, parsed: r.ingredients.map((l) => ({ name: ingredientName(l), staple: isStaple(l) })) })),
       plan: db.plan,
+      cards: db.cards,
     };
   });
 
@@ -280,6 +281,33 @@ export async function apiRoutes(app: FastifyInstance, d: Deps) {
       return { ok: true };
     }),
   );
+
+  // ----- loyalty cards -----
+  const ean13ok = (n: string) => {
+    if (!/^\d{13}$/.test(n)) return false;
+    const d = n.split('').map(Number);
+    const sum = d.slice(0, 12).reduce((s, x, i) => s + x * (i % 2 ? 3 : 1), 0);
+    return (10 - (sum % 10)) % 10 === d[12];
+  };
+  app.post<{ Body: { name: string; number: string; format?: LoyaltyCard['format'] } }>('/api/cards', (req, reply) =>
+    guard(reply, 400, () => {
+      const name = String(req.body?.name ?? '').trim() || 'Clubcard';
+      const number = String(req.body?.number ?? '').trim().replace(/\s+/g, '');
+      if (!number || number.length > 200) throw new Error('Enter or scan the card number');
+      const format: LoyaltyCard['format'] = req.body?.format && ['EAN13', 'CODE128', 'QR'].includes(req.body.format)
+        ? (req.body.format === 'EAN13' && !ean13ok(number) ? 'CODE128' : req.body.format)
+        : ean13ok(number) ? 'EAN13' : 'CODE128';
+      const card: LoyaltyCard = { id: newId(), name, number, format, createdAt: now() };
+      store.update((db) => db.cards.push(card));
+      return card;
+    }),
+  );
+  app.delete<{ Params: { id: string } }>('/api/cards/:id', async (req) => {
+    store.update((db) => {
+      db.cards = db.cards.filter((c) => c.id !== req.params.id);
+    });
+    return { ok: true };
+  });
 
   // ----- photos -----
   app.post('/api/photos', (req, reply) => guard(reply, 400, () => ({ id: photos.save(req.body as Buffer) })));

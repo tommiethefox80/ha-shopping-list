@@ -47,6 +47,18 @@ describe('recipes API', () => {
   });
 });
 
+describe('loyalty cards', () => {
+  it('works out the barcode type from the number', async () => {
+    const { app, store } = await make();
+    const add = (payload: object) => app.inject({ method: 'POST', url: '/api/cards', payload }).then((r) => r.json());
+    expect((await add({ name: 'Clubcard', number: '5000157024671' })).format).toBe('EAN13');
+    expect((await add({ name: 'Other', number: '5000157024672' })).format).toBe('CODE128'); // bad check digit
+    expect((await add({ name: 'App', number: 'ABC-123', format: 'QR' })).format).toBe('QR');
+    expect(store.data.cards).toHaveLength(3);
+    expect((await app.inject({ method: 'POST', url: '/api/cards', payload: { name: 'x', number: '' } })).statusCode).toBe(400);
+  });
+});
+
 describe('API', () => {
   it('scanning an unknown barcode looks it up once, saves it as a product and adds it', async () => {
     const { app, store, lookups } = await make();

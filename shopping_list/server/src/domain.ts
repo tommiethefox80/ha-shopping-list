@@ -94,6 +94,15 @@ export interface Recipe {
   createdAt: string;
 }
 
+/** A loyalty card (Clubcard etc.) shown as a barcode at the till. */
+export interface LoyaltyCard {
+  id: string;
+  name: string;
+  number: string;
+  format: 'EAN13' | 'CODE128' | 'QR';
+  createdAt: string;
+}
+
 /** What we last agreed with one Home Assistant to-do list: HA item uid -> our item. */
 export interface HaLink {
   itemId: string;
@@ -115,6 +124,7 @@ export interface Db {
   recipes: Recipe[];
   /** Week plan: "2026-11-16" -> recipe ids. */
   plan: Record<string, string[]>;
+  cards: LoyaltyCard[];
 }
 
 export const now = () => new Date().toISOString();

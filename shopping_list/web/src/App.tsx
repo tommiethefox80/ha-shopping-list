@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { api } from './api';
+import { api, flushOutbox, outbox, QueuedOffline, type QueuedCall } from './api';
+import { applyOutbox, cachedState, cacheState } from './offline';
 import { ListPage } from './ListPage';
 import { ProductsPage } from './ProductsPage';
 import { RecipesPage } from './RecipesPage';
@@ -20,7 +21,10 @@ const savedList = () => {
 
 export function App() {
   const [tab, setTab] = useState<Tab>(tabFromHash);
-  const [state, setState] = useState<AppState>();
+  const [serverState, setServerState] = useState<AppState | undefined>(cachedState);
+  const [queue, setQueue] = useState<QueuedCall[]>(outbox.get);
+  const [offline, setOffline] = useState(false);
+  const state = serverState && applyOutbox(serverState, queue);
   const [listId, setListIdState] = useState<string | undefined>(savedList);
   const [error, setError] = useState<string>();
   const [toast, setToast] = useState<string>();
@@ -30,10 +34,16 @@ export function App() {
   const refresh = useCallback(async () => {
     try {
       const q = listRef.current ? `?listId=${encodeURIComponent(listRef.current)}` : '';
-      setState(await api.get<AppState>(`state${q}`));
+      if (!(await flushOutbox())) throw new TypeError('offline');
+      const s = await api.get<AppState>(`state${q}`);
+      setServerState(s);
+      cacheState(s);
+      setOffline(false);
       setError(undefined);
     } catch (e) {
-      setError((e as Error).message);
+      // No signal: keep showing what we have; queued changes go when it's back.
+      if (e instanceof TypeError) setOffline(true);
+      else setError((e as Error).message);
     }
   }, []);
 
@@ -50,11 +60,17 @@ export function App() {
       /* no SSE */
     }
     const t = setInterval(refresh, 30_000);
+    const retry = setInterval(() => outbox.get().length && refresh(), 8000);
+    const off = outbox.subscribe(setQueue);
+    window.addEventListener('online', refresh);
     const onVisible = () => document.visibilityState === 'visible' && refresh();
     document.addEventListener('visibilitychange', onVisible);
     return () => {
       es?.close();
       clearInterval(t);
+      clearInterval(retry);
+      off();
+      window.removeEventListener('online', refresh);
       document.removeEventListener('visibilitychange', onVisible);
     };
   }, [refresh]);
@@ -94,7 +110,8 @@ export function App() {
         await fn();
         if (done) setToast(done);
       } catch (e) {
-        setToast((e as Error).message);
+        if (e instanceof QueuedOffline) setOffline(true);
+        else setToast((e as Error).message);
       }
       await refresh();
     },
@@ -107,6 +124,11 @@ export function App() {
   return (
     <div className="app">
       <main>
+        {(offline || queue.length > 0) && (
+          <p className="notice offline">
+            📴 {offline ? 'No signal.' : 'Syncing…'} {queue.length > 0 ? `${queue.length} change${queue.length > 1 ? 's' : ''} saved on this phone, will sync when you're back online.` : 'Showing the list as it was last loaded.'}
+          </p>
+        )}
         {error && <p className="notice warn">Can't reach the add-on: {error}</p>}
         {!state ? <p className="muted center">Loading…</p> : tab === 'list' ? <ListPage {...ctx} /> : tab === 'recipes' ? <RecipesPage {...ctx} /> : <ProductsPage {...ctx} />}
       </main>

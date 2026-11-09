@@ -68,6 +68,13 @@ export interface Recipe {
   parsed: { name: string; staple: boolean }[];
 }
 
+export interface LoyaltyCard {
+  id: string;
+  name: string;
+  number: string;
+  format: 'EAN13' | 'CODE128' | 'QR';
+}
+
 export interface AppState {
   version: number;
   me?: string;
@@ -82,4 +89,5 @@ export interface AppState {
   ha: { connected: boolean; entities: string[]; error?: string } | null;
   recipes: Recipe[];
   plan: Record<string, string[]>;
+  cards: LoyaltyCard[];
 }

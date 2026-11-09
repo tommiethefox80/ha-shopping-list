@@ -12,6 +12,8 @@ A shared shopping list for the household. It runs as a Home Assistant add-on and
 - **Multiple lists** (weekly shop, Aldi, B&Q…), each item with an optional **note** and a **photo** of the exact product.
 - **Prices** are remembered per product, with a running total for the list and for what's in the trolley.
 - **Recipes**: paste a recipe link (most recipe sites work) or type one in. Change the servings, tick which ingredients you need and add them to the list, or plan the week and add every meal's ingredients at once.
+- **Patchy signal is fine**: ticks and additions made with no signal show at once and sync when you're back online.
+- **Loyalty cards** (💳): scan your Clubcard or keyfob once, then show its barcode full-screen at the till.
 - **Tick off** items as you shop. They move to **Got it** until you clear them.
 
 ## Install

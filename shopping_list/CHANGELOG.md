@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.3.0
+- Works through patchy signal in the shop: ticks, quantity changes and additions made with no signal show straight away, are kept on the phone and sync when the signal is back
+- The last loaded list opens instantly, even before the add-on answers
+- Loyalty cards (💳 on the list): scan your Clubcard or keyfob, or type the number, and show it full-screen at the till
+
 ## 3.2.0
 - Recipes tab: paste a recipe link (BBC Good Food and most recipe sites) or type one in
 - Change the servings and the amounts scale
