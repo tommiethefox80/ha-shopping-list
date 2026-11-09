@@ -46,3 +46,23 @@ export const ago = (iso: string) => {
   if (h < 24) return `${h}h ago`;
   return `${Math.round(h / 24)}d ago`;
 };
+
+/** Multiplies the leading amount(s) in an ingredient line: "400g pasta" ×1.5 -> "600g pasta". */
+export function scaleLine(line: string, factor: number): string {
+  if (factor === 1) return line;
+  const NUM = String.raw`(?:\d+(?:[.,]\d+)?(?:\s*\/\s*\d+)?|[½⅓⅔¼¾⅛])`;
+  const frac: Record<string, number> = { '½': 0.5, '⅓': 1 / 3, '⅔': 2 / 3, '¼': 0.25, '¾': 0.75, '⅛': 0.125 };
+  const val = (t: string) => frac[t] ?? (t.includes('/') ? Number(t.split('/')[0]) / Number(t.split('/')[1]) : Number(t.replace(',', '.')));
+  const fmt = (n: number) => {
+    const r = Math.round(n * 100) / 100;
+    return Math.abs(r - Math.round(r)) < 0.01 ? String(Math.round(r)) : String(r);
+  };
+  return line.replace(new RegExp(String.raw`^(\s*)(${NUM})(\s*[-–]\s*(${NUM}))?`), (_m, sp: string, a: string, range?: string, b?: string) =>
+    `${sp}${fmt(val(a.replace(/\s/g, '')) * factor)}${range && b ? `-${fmt(val(b.replace(/\s/g, '')) * factor)}` : ''}`,
+  );
+}
+
+export const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim().replace(/(es|s)$/, '');
+
+/** yyyy-mm-dd in local time. */
+export const isoDay = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;

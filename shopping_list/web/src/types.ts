@@ -57,6 +57,17 @@ export interface Activity {
   listId?: string;
 }
 
+export interface Recipe {
+  id: string;
+  name: string;
+  url?: string;
+  imageUrl?: string;
+  servings: number;
+  ingredients: string[];
+  steps: string[];
+  parsed: { name: string; staple: boolean }[];
+}
+
 export interface AppState {
   version: number;
   me?: string;
@@ -69,4 +80,6 @@ export interface AppState {
   memoryNames: string[];
   activity: Activity[];
   ha: { connected: boolean; entities: string[]; error?: string } | null;
+  recipes: Recipe[];
+  plan: Record<string, string[]>;
 }

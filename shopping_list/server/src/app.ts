@@ -17,6 +17,7 @@ export async function buildApp(
   opts: {
     logger?: boolean;
     barcodeLookup?: (ean: string) => Promise<BarcodeInfo | undefined>;
+    fetcher?: typeof fetch;
     haStatus?: () => { connected: boolean; entities: string[]; error?: string } | undefined;
   } = {},
 ) {
@@ -37,7 +38,7 @@ export async function buildApp(
     }
   });
 
-  await apiRoutes(app, { store, list, photos, barcodeLookup: opts.barcodeLookup, haStatus: opts.haStatus });
+  await apiRoutes(app, { store, list, photos, barcodeLookup: opts.barcodeLookup, fetcher: opts.fetcher, haStatus: opts.haStatus });
 
   if (existsSync(cfg.webDir)) {
     await app.register(fastifyStatic, { root: cfg.webDir, prefix: '/' });

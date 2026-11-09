@@ -73,6 +73,8 @@ describe('aisles', () => {
     expect(guessCategory('toilet roll')).toBe('household');
     expect(guessCategory('cat food')).toBe('pets');
     expect(guessCategory('size 6 nappies')).toBe('baby');
+    expect(guessCategory('hot chilli powder')).toBe('cupboard');
+    expect(guessCategory('red chilli')).toBe('fruit-veg');
     expect(guessCategory('zorbleflax')).toBeUndefined();
   });
 

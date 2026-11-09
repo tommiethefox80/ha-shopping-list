@@ -19,6 +19,34 @@ const make = async (apiToken = '') => {
   return { app, store, lookups };
 };
 
+describe('recipes API', () => {
+  it('adds chosen ingredients to the list with the recipe line as a note, merging with what is there', async () => {
+    const { app, store } = await make();
+    await app.inject({ method: 'POST', url: '/api/items', payload: { text: 'chopped tomatoes' } });
+    const r = await app.inject({ method: 'POST', url: '/api/recipes/add-to-list', payload: { lines: [
+      { line: '1 x 400g can chopped tomatoes', recipe: 'Chilli' },
+      { line: '500g lean minced beef', recipe: 'Chilli' },
+    ] } });
+    expect(r.json()).toEqual({ added: 2 });
+    const items = store.data.items.map((i) => [i.name, i.qty, i.note ?? '']);
+    expect(items).toEqual([
+      ['chopped tomatoes', 2, 'Chilli: 1 x 400g can chopped tomatoes'],
+      ['lean minced beef', 1, 'Chilli: 500g lean minced beef'],
+    ]);
+  });
+
+  it('typed-in recipes and the week plan', async () => {
+    const { app, store } = await make();
+    const r = (await app.inject({ method: 'POST', url: '/api/recipes', payload: { name: 'Tacos', servings: 2, ingredients: '8 taco shells\n400g beef mince' } })).json();
+    expect(r.ingredients).toEqual(['8 taco shells', '400g beef mince']);
+    const day = new Date().toISOString().slice(0, 10);
+    await app.inject({ method: 'PUT', url: `/api/plan/${day}`, payload: { recipeIds: [r.id, 'nope'] } });
+    expect(store.data.plan[day]).toEqual([r.id]);
+    await app.inject({ method: 'DELETE', url: `/api/recipes/${r.id}` });
+    expect(store.data.plan[day]).toEqual([]);
+  });
+});
+
 describe('API', () => {
   it('scanning an unknown barcode looks it up once, saves it as a product and adds it', async () => {
     const { app, store, lookups } = await make();

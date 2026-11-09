@@ -2,10 +2,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from './api';
 import { ListPage } from './ListPage';
 import { ProductsPage } from './ProductsPage';
+import { RecipesPage } from './RecipesPage';
 import type { AppState } from './types';
 
-type Tab = 'list' | 'defaults';
-const tabFromHash = (): Tab => (location.hash.slice(1) === 'defaults' ? 'defaults' : 'list');
+type Tab = 'list' | 'recipes' | 'defaults';
+const tabFromHash = (): Tab => {
+  const h = location.hash.slice(1);
+  return h === 'defaults' || h === 'recipes' ? h : 'list';
+};
 const savedList = () => {
   try {
     return localStorage.getItem('listId') ?? undefined;
@@ -104,12 +108,15 @@ export function App() {
     <div className="app">
       <main>
         {error && <p className="notice warn">Can't reach the add-on: {error}</p>}
-        {!state ? <p className="muted center">Loading…</p> : tab === 'list' ? <ListPage {...ctx} /> : <ProductsPage {...ctx} />}
+        {!state ? <p className="muted center">Loading…</p> : tab === 'list' ? <ListPage {...ctx} /> : tab === 'recipes' ? <RecipesPage {...ctx} /> : <ProductsPage {...ctx} />}
       </main>
       {toast && <div className="toast">{toast}</div>}
       <nav className="tabs">
         <button className={tab === 'list' ? 'on' : ''} onClick={() => go('list')}>
           <span className="ico">☰</span>List
+        </button>
+        <button className={tab === 'recipes' ? 'on' : ''} onClick={() => go('recipes')}>
+          <span className="ico">🍳</span>Recipes
         </button>
         <button className={tab === 'defaults' ? 'on' : ''} onClick={() => go('defaults')}>
           <span className="ico">★</span>Products
@@ -124,7 +131,7 @@ export interface PageProps {
   act: (fn: () => Promise<unknown>, done?: string) => Promise<void>;
   toast: (msg: string) => void;
   refresh: () => Promise<void>;
-  go: (t: 'list' | 'defaults') => void;
+  go: (t: 'list' | 'recipes' | 'defaults') => void;
   list: import('./types').ShopList;
   setListId: (id: string) => void;
 }

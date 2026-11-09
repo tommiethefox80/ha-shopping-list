@@ -7,12 +7,15 @@ import { lookupBarcode, type BarcodeInfo } from '../openfoodfacts.js';
 import type { Photos } from '../photos.js';
 import type { Store } from '../store.js';
 import { dueSuggestions, frequentNames } from '../suggestions.js';
+import { importRecipe, ingredientName, isStaple } from '../recipes.js';
+import type { Recipe } from '../domain.js';
 
 export interface Deps {
   store: Store;
   list: ShoppingList;
   photos: Photos;
   barcodeLookup?: (ean: string) => Promise<BarcodeInfo | undefined>;
+  fetcher?: typeof fetch;
   haStatus?: () => { connected: boolean; entities: string[]; error?: string } | undefined;
 }
 
@@ -55,6 +58,8 @@ export async function apiRoutes(app: FastifyInstance, d: Deps) {
       memoryNames: Object.keys(db.memory).filter((k) => k.startsWith('n:')).map((k) => k.slice(2)),
       activity: db.activity.slice(-40).reverse(),
       ha: d.haStatus?.() ?? null,
+      recipes: db.recipes.map((r) => ({ ...r, parsed: r.ingredients.map((l) => ({ name: ingredientName(l), staple: isStaple(l) })) })),
+      plan: db.plan,
     };
   });
 
@@ -197,6 +202,84 @@ export async function apiRoutes(app: FastifyInstance, d: Deps) {
     });
     return { ok: true };
   });
+
+  // ----- recipes & week plan -----
+  const lines = (v: unknown) =>
+    (Array.isArray(v) ? v.map(String) : String(v ?? '').split('\n')).map((l) => l.trim()).filter(Boolean).slice(0, 200);
+
+  app.post<{ Body: { url: string } }>('/api/recipes/import', (req, reply) =>
+    guard(reply, 422, async () => {
+      const r = await importRecipe(String(req.body?.url ?? ''), d.fetcher);
+      const dupe = store.data.recipes.find((x) => x.url && x.url === r.url);
+      if (dupe) return dupe;
+      store.update((db) => db.recipes.unshift(r));
+      return r;
+    }),
+  );
+  app.post<{ Body: Partial<Recipe> & { ingredients?: string | string[]; steps?: string | string[] } }>('/api/recipes', (req, reply) =>
+    guard(reply, 400, () => {
+      const b = req.body ?? {};
+      const name = String(b.name ?? '').trim();
+      if (!name) throw new Error('A name is required');
+      const r: Recipe = {
+        id: newId(), name, url: b.url || undefined, imageUrl: b.imageUrl || undefined,
+        servings: Math.min(50, Math.max(1, Math.round(Number(b.servings) || 4))),
+        ingredients: lines(b.ingredients), steps: lines(b.steps), createdAt: now(),
+      };
+      store.update((db) => db.recipes.unshift(r));
+      return r;
+    }),
+  );
+  app.patch<{ Params: { id: string }; Body: Partial<Recipe> & { ingredients?: string | string[]; steps?: string | string[] } }>(
+    '/api/recipes/:id',
+    (req, reply) =>
+      guard(reply, 404, () =>
+        store.update((db) => {
+          const r = db.recipes.find((x) => x.id === req.params.id);
+          if (!r) throw new Error('Recipe not found');
+          const b = req.body ?? {};
+          if (b.name?.trim()) r.name = b.name.trim();
+          if (b.servings) r.servings = Math.min(50, Math.max(1, Math.round(Number(b.servings))));
+          if (b.ingredients !== undefined) r.ingredients = lines(b.ingredients);
+          if (b.steps !== undefined) r.steps = lines(b.steps);
+          return r;
+        }),
+      ),
+  );
+  app.delete<{ Params: { id: string } }>('/api/recipes/:id', async (req) => {
+    store.update((db) => {
+      db.recipes = db.recipes.filter((r) => r.id !== req.params.id);
+      for (const k of Object.keys(db.plan)) db.plan[k] = db.plan[k].filter((id) => id !== req.params.id);
+    });
+    return { ok: true };
+  });
+
+  /** Ingredients -> list items. Each line becomes an item named after the ingredient, with the full line as its note. */
+  app.post<{ Body: { listId?: string; lines: { line: string; recipe?: string }[] } }>('/api/recipes/add-to-list', async (req) => {
+    const who = whoIs(req);
+    const added = (req.body?.lines ?? []).slice(0, 200).map(({ line, recipe }) => {
+      const name = ingredientName(line);
+      const note = line.toLowerCase() === name.toLowerCase() ? (recipe ? `for ${recipe}` : undefined) : `${recipe ? `${recipe}: ` : ''}${line}`;
+      return list.add({ name, listId: req.body?.listId, note, source: 'recipe' }, who);
+    });
+    return { added: added.length };
+  });
+
+  app.put<{ Params: { date: string }; Body: { recipeIds: string[] } }>('/api/plan/:date', (req, reply) =>
+    guard(reply, 400, () => {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(req.params.date)) throw new Error('Bad date');
+      const known = new Set(store.data.recipes.map((r) => r.id));
+      const ids = (req.body?.recipeIds ?? []).filter((id) => known.has(id));
+      store.update((db) => {
+        if (ids.length) db.plan[req.params.date] = ids;
+        else delete db.plan[req.params.date];
+        // Keep the plan tidy: drop days more than 2 weeks ago.
+        const cutoff = new Date(Date.now() - 14 * 86_400_000).toISOString().slice(0, 10);
+        for (const k of Object.keys(db.plan)) if (k < cutoff) delete db.plan[k];
+      });
+      return { ok: true };
+    }),
+  );
 
   // ----- photos -----
   app.post('/api/photos', (req, reply) => guard(reply, 400, () => ({ id: photos.save(req.body as Buffer) })));

@@ -81,6 +81,19 @@ export interface Activity {
   listId?: string;
 }
 
+/** A recipe: imported from a web page or typed in. */
+export interface Recipe {
+  id: string;
+  name: string;
+  url?: string;
+  imageUrl?: string;
+  /** Servings the ingredient amounts are written for. */
+  servings: number;
+  ingredients: string[];
+  steps: string[];
+  createdAt: string;
+}
+
 /** What we last agreed with one Home Assistant to-do list: HA item uid -> our item. */
 export interface HaLink {
   itemId: string;
@@ -99,6 +112,9 @@ export interface Db {
   activity: Activity[];
   /** Per HA to-do entity: links between its items and ours. */
   haSync: Record<string, { links: Record<string, HaLink> }>;
+  recipes: Recipe[];
+  /** Week plan: "2026-11-16" -> recipe ids. */
+  plan: Record<string, string[]>;
 }
 
 export const now = () => new Date().toISOString();

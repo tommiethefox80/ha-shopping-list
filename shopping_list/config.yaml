@@ -1,5 +1,5 @@
 name: Shopping List
-version: "3.1.0"
+version: "3.2.0"
 slug: shopping_list
 description: Shared household shopping list with usuals, barcode scanning and products you always buy
 url: https://github.com/tommiethefox80/ha-shopping-list

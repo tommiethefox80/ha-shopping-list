@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.2.0
+- Recipes tab: paste a recipe link (BBC Good Food and most recipe sites) or type one in
+- Change the servings and the amounts scale
+- Choose which ingredients to add: salt, oil and things already on the list start unticked; each item gets the recipe line as its note and lands in the right aisle
+- This week: plan recipes for the next 7 days and add the whole week's ingredients in one go
+- Spices and other cupboard staples now go in Food cupboard
+
 ## 3.1.0
 - Two-way sync with Home Assistant to-do lists (default `todo.shopping_list`):
   "add milk to the shopping list" via Assist lands here, and the list shows in HA's To-do dashboard and cards

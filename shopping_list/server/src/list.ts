@@ -133,7 +133,7 @@ export class ShoppingList {
       );
       if (existing) {
         existing.qty = clampQty(existing.qty + qty);
-        if (input.note) existing.note = input.note;
+        if (input.note && !existing.note?.includes(input.note)) existing.note = existing.note ? `${existing.note}; ${input.note}` : input.note;
         existing.updatedAt = now();
         this.log(db, who, `added ${qty} more ${existing.name}`, listId);
         return existing;
