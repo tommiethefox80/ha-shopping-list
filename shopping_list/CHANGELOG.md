@@ -2,6 +2,7 @@
 
 ## 1.0.1
 - Fix install on Home Assistant: build from the Playwright image regardless of the base image Supervisor passes in
+- Fix start-up hang: start the virtual display directly
 
 ## 1.0.0
 - Shopping list with quantities ("2 beans"), manual tick-off and a Done section

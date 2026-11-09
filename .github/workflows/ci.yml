@@ -48,7 +48,7 @@ jobs:
           for i in $(seq 1 30); do curl -sf localhost:8099/api/state >/dev/null && break; sleep 2; done
           curl -sf localhost:8099/api/state | head -c 200; echo
           curl -sf localhost:8099/ | grep -q '<div id="root">'
-          docker exec sl node -e "require('/app/server/node_modules/playwright').chromium.launch().then(b=>{console.log('chromium ok');return b.close()})"
+          docker exec sl node -e "require('/app/server/node_modules/playwright').chromium.launch({headless:false}).then(b=>{console.log('headed chromium ok');return b.close()})"
       - name: Container logs
         if: always()
         run: docker logs sl 2>&1 | tail -60 || true
