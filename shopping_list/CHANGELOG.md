@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.4.0
+- Meals tab: Monday to Sunday evening meal planner, move between weeks, one dinner a day — a recipe or just "Leftovers", "Takeaway", "Eating out"…
+- Set how many each meal is for; "Add the week's ingredients" adds everything for the week's recipes in one go
+- Recipes now look like a cookbook page: photo, description, serves, prep & cook times, tags, ingredients with section headings, numbered method, notes
+- Cook mode: bigger text, tap steps off as you go, screen stays on
+- Write and edit recipes fully (with your own photo); imports now bring in times, description and tags
+- Recipe book: search and filter by tag
+- `/api/meals/today` for a "Tonight's dinner" sensor in Home Assistant (example in homeassistant/)
+
 ## 3.3.0
 - Works through patchy signal in the shop: ticks, quantity changes and additions made with no signal show straight away, are kept on the phone and sync when the signal is back
 - The last loaded list opens instantly, even before the add-on answers

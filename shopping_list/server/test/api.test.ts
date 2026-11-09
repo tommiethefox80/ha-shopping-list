@@ -35,15 +35,49 @@ describe('recipes API', () => {
     ]);
   });
 
-  it('typed-in recipes and the week plan', async () => {
+  it('typed-in recipes with all the details, and editing them', async () => {
+    const { app } = await make();
+    const r = (await app.inject({ method: 'POST', url: '/api/recipes', payload: {
+      name: 'Tacos', servings: 2, prepMinutes: '10', cookMinutes: 15, tags: 'Mexican, quick', description: 'Friday favourite',
+      ingredients: '8 taco shells\nFor the salsa:\n2 tomatoes', steps: 'Brown the mince\nWarm the shells', notes: 'Kids like mild',
+      imageUrl: 'https://img.example/tacos.jpg',
+    } })).json();
+    expect(r.imageUrl).toBe('https://img.example/tacos.jpg');
+    expect(r).toMatchObject({ servings: 2, prepMinutes: 10, cookMinutes: 15, tags: ['mexican', 'quick'], notes: 'Kids like mild' });
+    expect(r.ingredients).toEqual(['8 taco shells', 'For the salsa:', '2 tomatoes']);
+    const edited = (await app.inject({ method: 'PATCH', url: `/api/recipes/${r.id}`, payload: { cookMinutes: '', servings: 4 } })).json();
+    expect(edited).toMatchObject({ servings: 4, prepMinutes: 10 });
+    expect(edited.cookMinutes).toBeUndefined();
+    const state = (await app.inject('/api/state')).json();
+    expect(state.recipes[0].parsed[1]).toMatchObject({ heading: true, name: 'For the salsa' });
+  });
+
+  it('headings are not added to the list', async () => {
     const { app, store } = await make();
-    const r = (await app.inject({ method: 'POST', url: '/api/recipes', payload: { name: 'Tacos', servings: 2, ingredients: '8 taco shells\n400g beef mince' } })).json();
-    expect(r.ingredients).toEqual(['8 taco shells', '400g beef mince']);
-    const day = new Date().toISOString().slice(0, 10);
-    await app.inject({ method: 'PUT', url: `/api/plan/${day}`, payload: { recipeIds: [r.id, 'nope'] } });
-    expect(store.data.plan[day]).toEqual([r.id]);
+    await app.inject({ method: 'POST', url: '/api/recipes/add-to-list', payload: { lines: [{ line: 'For the salsa:' }, { line: '2 tomatoes' }] } });
+    expect(store.data.items.map((i) => i.name)).toEqual(['tomatoes']);
+  });
+});
+
+describe('evening meal planner', () => {
+  it('one meal a day: a recipe or just words, with servings; tonight endpoint', async () => {
+    const { app, store } = await make();
+    const r = (await app.inject({ method: 'POST', url: '/api/recipes', payload: { name: 'Chilli', servings: 4, ingredients: '500g mince' } })).json();
+    const put = (d: string, payload: object) => app.inject({ method: 'PUT', url: `/api/meals/${d}`, payload });
+    expect((await put('2026-11-16', { recipeId: r.id, servings: 6 })).json()).toEqual({ recipeId: r.id, servings: 6 });
+    await put('2026-11-17', { text: 'Leftovers' });
+    expect((await put('2026-11-18', {})).statusCode).toBe(400);
+    expect((await put('nonsense', { text: 'x' })).statusCode).toBe(400);
+    await put('2026-11-16', { text: 'Takeaway' }); // replaces, one meal a day
+    expect(store.data.meals['2026-11-16']).toEqual({ text: 'Takeaway' });
+    await put('2026-11-19', { recipeId: r.id });
+    expect((await app.inject('/api/meals/today?date=2026-11-19')).json()).toEqual({ date: '2026-11-19', meal: 'Chilli', recipeId: r.id, servings: 4 });
+    expect((await app.inject('/api/meals/today?date=2026-11-20')).json().meal).toBeNull();
+    // Deleting a recipe keeps the evening planned, as words.
     await app.inject({ method: 'DELETE', url: `/api/recipes/${r.id}` });
-    expect(store.data.plan[day]).toEqual([]);
+    expect(store.data.meals['2026-11-19']).toMatchObject({ text: 'Chilli' });
+    await app.inject({ method: 'DELETE', url: '/api/meals/2026-11-17' });
+    expect(store.data.meals['2026-11-17']).toBeUndefined();
   });
 });
 

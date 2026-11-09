@@ -66,3 +66,19 @@ export const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').
 
 /** yyyy-mm-dd in local time. */
 export const isoDay = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+export const isHeading = (line: string) => /:\s*$/.test(line) && line.length <= 60 && !/^\s*[\d½¼¾⅓⅔]/.test(line);
+
+/** 65 -> "1h 5m". */
+export const mins = (m?: number) => (!m ? '' : m < 60 ? `${m}m` : `${Math.floor(m / 60)}h${m % 60 ? ` ${m % 60}m` : ''}`);
+
+export const recipePic = (r: { photo?: string; imageUrl?: string }) => (r.photo ? photoUrl(r.photo) : r.imageUrl);
+
+/** Monday of the week containing d. */
+export function mondayOf(d: Date): Date {
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
+  return x;
+}
+
+export const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);

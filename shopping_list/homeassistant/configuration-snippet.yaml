@@ -15,3 +15,12 @@ rest_command:
     content_type: "application/json"
     payload: '{"text": {{ item | tojson }}, "source": "home-assistant"}'
 
+
+# Optional: "What's for tea?" on a dashboard (no token needed if api_token is empty).
+rest:
+  - resource: "http://aeb98774-shopping-list:8099/api/meals/today"
+    scan_interval: 900
+    sensor:
+      - name: "Tonight's dinner"
+        value_template: "{{ value_json.meal or 'Nothing planned' }}"
+        icon: mdi:silverware-fork-knife

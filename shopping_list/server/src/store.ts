@@ -66,8 +66,8 @@ export function migrate(raw: Omit<Partial<Db>, 'items' | 'products'> & { items?:
       purchases: raw.purchases ?? [],
       activity: raw.activity ?? [],
       haSync: raw.haSync ?? {},
-      recipes: raw.recipes ?? [],
-      plan: raw.plan ?? {},
+      recipes: (raw.recipes ?? []).map((r) => ({ ...r, tags: r.tags ?? [] })),
+      meals: raw.meals ?? mealsFromPlan((raw as { plan?: Record<string, string[]> }).plan),
       cards: raw.cards ?? [],
     };
   }
@@ -101,8 +101,15 @@ export function migrate(raw: Omit<Partial<Db>, 'items' | 'products'> & { items?:
     };
   });
   return {
-    version: 3, lists: [list], categories: structuredClone(DEFAULT_CATEGORIES), items, products, memory: {}, purchases: [], activity: [], haSync: {}, recipes: [], plan: {}, cards: [],
+    version: 3, lists: [list], categories: structuredClone(DEFAULT_CATEGORIES), items, products, memory: {}, purchases: [], activity: [], haSync: {}, recipes: [], meals: {}, cards: [],
   };
+}
+
+/** 3.2's plan allowed several recipes a day; keep the first as that day's evening meal. */
+function mealsFromPlan(plan?: Record<string, string[]>): Db['meals'] {
+  const out: Db['meals'] = {};
+  for (const [day, ids] of Object.entries(plan ?? {})) if (ids?.[0]) out[day] = { recipeId: ids[0] };
+  return out;
 }
 
 /** Starting products: the usuals plus the defaults agreed with Tom. */

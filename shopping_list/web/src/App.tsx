@@ -3,13 +3,14 @@ import { api, flushOutbox, outbox, QueuedOffline, type QueuedCall } from './api'
 import { applyOutbox, cachedState, cacheState } from './offline';
 import { ListPage } from './ListPage';
 import { ProductsPage } from './ProductsPage';
+import { MealsPage } from './MealsPage';
 import { RecipesPage } from './RecipesPage';
 import type { AppState } from './types';
 
-type Tab = 'list' | 'recipes' | 'defaults';
+type Tab = 'list' | 'meals' | 'recipes' | 'defaults';
 const tabFromHash = (): Tab => {
   const h = location.hash.slice(1);
-  return h === 'defaults' || h === 'recipes' ? h : 'list';
+  return h === 'defaults' || h === 'recipes' || h === 'meals' ? h : 'list';
 };
 const savedList = () => {
   try {
@@ -130,12 +131,15 @@ export function App() {
           </p>
         )}
         {error && <p className="notice warn">Can't reach the add-on: {error}</p>}
-        {!state ? <p className="muted center">Loading…</p> : tab === 'list' ? <ListPage {...ctx} /> : tab === 'recipes' ? <RecipesPage {...ctx} /> : <ProductsPage {...ctx} />}
+        {!state ? <p className="muted center">Loading…</p> : tab === 'list' ? <ListPage {...ctx} /> : tab === 'meals' ? <MealsPage {...ctx} /> : tab === 'recipes' ? <RecipesPage {...ctx} /> : <ProductsPage {...ctx} />}
       </main>
       {toast && <div className="toast">{toast}</div>}
       <nav className="tabs">
         <button className={tab === 'list' ? 'on' : ''} onClick={() => go('list')}>
           <span className="ico">☰</span>List
+        </button>
+        <button className={tab === 'meals' ? 'on' : ''} onClick={() => go('meals')}>
+          <span className="ico">📅</span>Meals
         </button>
         <button className={tab === 'recipes' ? 'on' : ''} onClick={() => go('recipes')}>
           <span className="ico">🍳</span>Recipes
@@ -153,7 +157,7 @@ export interface PageProps {
   act: (fn: () => Promise<unknown>, done?: string) => Promise<void>;
   toast: (msg: string) => void;
   refresh: () => Promise<void>;
-  go: (t: 'list' | 'recipes' | 'defaults') => void;
+  go: (t: 'list' | 'meals' | 'recipes' | 'defaults') => void;
   list: import('./types').ShopList;
   setListId: (id: string) => void;
 }

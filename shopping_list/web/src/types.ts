@@ -60,12 +60,24 @@ export interface Activity {
 export interface Recipe {
   id: string;
   name: string;
+  description?: string;
   url?: string;
   imageUrl?: string;
+  photo?: string;
   servings: number;
+  prepMinutes?: number;
+  cookMinutes?: number;
+  tags: string[];
   ingredients: string[];
   steps: string[];
-  parsed: { name: string; staple: boolean }[];
+  notes?: string;
+  parsed: { name: string; staple: boolean; heading?: boolean }[];
+}
+
+export interface Meal {
+  recipeId?: string;
+  text?: string;
+  servings?: number;
 }
 
 export interface LoyaltyCard {
@@ -88,6 +100,6 @@ export interface AppState {
   activity: Activity[];
   ha: { connected: boolean; entities: string[]; error?: string } | null;
   recipes: Recipe[];
-  plan: Record<string, string[]>;
+  meals: Record<string, Meal>;
   cards: LoyaltyCard[];
 }

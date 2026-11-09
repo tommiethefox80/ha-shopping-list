@@ -11,7 +11,8 @@ A shared shopping list for the household. It runs as a Home Assistant add-on and
 - **Live sync**: changes appear on every phone instantly. **Recent changes** shows who added or got what, using people's Home Assistant names.
 - **Multiple lists** (weekly shop, Aldi, B&Q…), each item with an optional **note** and a **photo** of the exact product.
 - **Prices** are remembered per product, with a running total for the list and for what's in the trolley.
-- **Recipes**: paste a recipe link (most recipe sites work) or type one in. Change the servings, tick which ingredients you need and add them to the list, or plan the week and add every meal's ingredients at once.
+- **Recipes**: a recipe book laid out like a cookbook, with photo, times, tags, ingredients (with section headings), numbered method and notes. Paste a link from most recipe sites to import one, or write your own. Cook mode keeps the screen on and lets you tick steps off.
+- **Meals**: a Monday–Sunday evening meal planner. Each day can be a recipe or just "Leftovers" or "Takeaway". Add the whole week's ingredients to the list in one tap. A "Tonight's dinner" sensor example for HA dashboards is in `homeassistant/`.
 - **Patchy signal is fine**: ticks and additions made with no signal show at once and sync when you're back online.
 - **Loyalty cards** (💳): scan your Clubcard or keyfob once, then show its barcode full-screen at the till.
 - **Tick off** items as you shop. They move to **Got it** until you clear them.

@@ -85,13 +85,30 @@ export interface Activity {
 export interface Recipe {
   id: string;
   name: string;
+  description?: string;
   url?: string;
   imageUrl?: string;
+  /** Uploaded photo id (takes precedence over imageUrl). */
+  photo?: string;
   /** Servings the ingredient amounts are written for. */
   servings: number;
+  prepMinutes?: number;
+  cookMinutes?: number;
+  tags: string[];
+  /** One per line. A line ending in ":" is a section heading ("For the sauce:"). */
   ingredients: string[];
   steps: string[];
+  notes?: string;
   createdAt: string;
+  updatedAt?: string;
+}
+
+/** The evening meal for one day: a recipe, or just words ("Leftovers", "Takeaway"). */
+export interface Meal {
+  recipeId?: string;
+  text?: string;
+  /** How many it's for (defaults to the recipe's servings). */
+  servings?: number;
 }
 
 /** A loyalty card (Clubcard etc.) shown as a barcode at the till. */
@@ -122,8 +139,8 @@ export interface Db {
   /** Per HA to-do entity: links between its items and ours. */
   haSync: Record<string, { links: Record<string, HaLink> }>;
   recipes: Recipe[];
-  /** Week plan: "2026-11-16" -> recipe ids. */
-  plan: Record<string, string[]>;
+  /** Evening meals: "2026-11-16" -> meal. */
+  meals: Record<string, Meal>;
   cards: LoyaltyCard[];
 }
 

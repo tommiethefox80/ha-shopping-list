@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { importRecipe, ingredientName, isStaple, recipeFromHtml, scaleLine } from '../src/recipes.js';
+import { importRecipe, ingredientName, isHeading, isoMinutes, isStaple, recipeFromHtml, scaleLine } from '../src/recipes.js';
 
 const page = (ld: unknown) => `<html><head><title>x</title>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Food"}</script>
@@ -14,6 +14,9 @@ const chilli = {
       name: 'Easy chilli con carne',
       image: [{ '@type': 'ImageObject', url: 'https://img.example/chilli.jpg' }],
       recipeYield: '4 servings',
+      description: 'A <b>simple</b> family chilli',
+      prepTime: 'PT10M', cookTime: 'PT1H5M',
+      recipeCategory: 'Dinner', recipeCuisine: ['Mexican'],
       recipeIngredient: [
         '1 tbsp oil', '1 large onion, finely chopped', '2 garlic cloves, crushed', '500g lean minced beef',
         '1 x 400g can chopped tomatoes', '400g can red kidney beans, drained', '½ tsp hot chilli powder',
@@ -32,7 +35,8 @@ describe('recipe import', () => {
     const r = recipeFromHtml(page(chilli), 'https://food.example/chilli')!;
     expect(r).toMatchObject({ name: 'Easy chilli con carne', servings: 4, imageUrl: 'https://img.example/chilli.jpg' });
     expect(r.ingredients).toHaveLength(10);
-    expect(r.steps).toEqual(['Fry the onion.', 'Add & simmer 20 mins .']);
+    expect(r.steps).toEqual(['Fry the onion.', 'Sauce:', 'Add & simmer 20 mins .']);
+    expect(r).toMatchObject({ description: 'A simple family chilli', prepMinutes: 10, cookMinutes: 65, tags: ['dinner', 'mexican'] });
   });
 
   it('says so when a page has no recipe', () => {
@@ -78,5 +82,17 @@ describe('scaling', () => {
     expect(scaleLine('2-3 tbsp oil', 2)).toBe('4-6 tbsp oil');
     expect(scaleLine('1/2 onion', 3)).toBe('1.5 onion');
     expect(scaleLine('salt', 2)).toBe('salt');
+  });
+});
+
+describe('details', () => {
+  it('reads ISO durations and spots headings', () => {
+    expect(isoMinutes('PT1H30M')).toBe(90);
+    expect(isoMinutes('PT45M')).toBe(45);
+    expect(isoMinutes('P0DT2H')).toBe(120);
+    expect(isoMinutes('')).toBeUndefined();
+    expect(isHeading('For the sauce:')).toBe(true);
+    expect(isHeading('2 tbsp oil:')).toBe(false);
+    expect(isHeading('500g mince')).toBe(false);
   });
 });

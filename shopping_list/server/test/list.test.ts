@@ -150,6 +150,19 @@ describe('upgrade from earlier versions', () => {
     expect(store.data.categories.length).toBeGreaterThan(10);
   });
 
+  it('3.2 week plan becomes one evening meal per day', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'sl-plan-'));
+    const a = new Store(dir, defaultProducts);
+    const raw = JSON.parse(JSON.stringify(a.data));
+    delete raw.meals;
+    raw.plan = { '2026-11-10': ['r1', 'r2'], '2026-11-11': [] };
+    raw.recipes = [{ id: 'r1', name: 'Chilli', servings: 4, ingredients: [], steps: [], createdAt: 'x' }];
+    writeFileSync(join(dir, 'shopping-list.json'), JSON.stringify(raw));
+    const b = new Store(dir);
+    expect(b.data.meals).toEqual({ '2026-11-10': { recipeId: 'r1' } });
+    expect(b.data.recipes[0].tags).toEqual([]);
+  });
+
   it('v3 data loads unchanged', () => {
     const dir = mkdtempSync(join(tmpdir(), 'sl-v3-'));
     const a = new Store(dir, defaultProducts);

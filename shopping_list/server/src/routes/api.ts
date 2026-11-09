@@ -7,8 +7,8 @@ import { lookupBarcode, type BarcodeInfo } from '../openfoodfacts.js';
 import type { Photos } from '../photos.js';
 import type { Store } from '../store.js';
 import { dueSuggestions, frequentNames } from '../suggestions.js';
-import { importRecipe, ingredientName, isStaple } from '../recipes.js';
-import type { LoyaltyCard, Recipe } from '../domain.js';
+import { importRecipe, ingredientName, isHeading, isStaple } from '../recipes.js';
+import type { LoyaltyCard, Meal, Recipe } from '../domain.js';
 
 export interface Deps {
   store: Store;
@@ -58,8 +58,11 @@ export async function apiRoutes(app: FastifyInstance, d: Deps) {
       memoryNames: Object.keys(db.memory).filter((k) => k.startsWith('n:')).map((k) => k.slice(2)),
       activity: db.activity.slice(-40).reverse(),
       ha: d.haStatus?.() ?? null,
-      recipes: db.recipes.map((r) => ({ ...r, parsed: r.ingredients.map((l) => ({ name: ingredientName(l), staple: isStaple(l) })) })),
-      plan: db.plan,
+      recipes: db.recipes.map((r) => ({
+        ...r,
+        parsed: r.ingredients.map((l) => (isHeading(l) ? { name: l.replace(/:\s*$/, ''), staple: false, heading: true } : { name: ingredientName(l), staple: isStaple(l) })),
+      })),
+      meals: db.meals,
       cards: db.cards,
     };
   });
@@ -217,40 +220,61 @@ export async function apiRoutes(app: FastifyInstance, d: Deps) {
       return r;
     }),
   );
-  app.post<{ Body: Partial<Recipe> & { ingredients?: string | string[]; steps?: string | string[] } }>('/api/recipes', (req, reply) =>
+  type RecipeBody = Partial<Omit<Recipe, 'tags' | 'ingredients' | 'steps'>> & {
+    ingredients?: string | string[];
+    steps?: string | string[];
+    tags?: string | string[];
+    photo?: string | null;
+  };
+  const mins = (v: unknown) => (v === null || v === '' || v === undefined ? undefined : Math.min(9999, Math.max(0, Math.round(Number(v)))) || undefined);
+  const tags = (v: unknown) =>
+    [...new Set((Array.isArray(v) ? v.map(String) : String(v ?? '').split(',')).map((t) => t.trim().toLowerCase()).filter(Boolean))].slice(0, 10);
+  const applyRecipe = (r: Recipe, b: RecipeBody) => {
+    if (b.name !== undefined && b.name.trim()) r.name = b.name.trim();
+    if (b.description !== undefined) r.description = b.description?.trim() || undefined;
+    if (b.servings !== undefined) r.servings = Math.min(50, Math.max(1, Math.round(Number(b.servings) || 4)));
+    if (b.prepMinutes !== undefined) r.prepMinutes = mins(b.prepMinutes);
+    if (b.cookMinutes !== undefined) r.cookMinutes = mins(b.cookMinutes);
+    if (b.tags !== undefined) r.tags = tags(b.tags);
+    if (b.ingredients !== undefined) r.ingredients = lines(b.ingredients);
+    if (b.steps !== undefined) r.steps = lines(b.steps);
+    if (b.notes !== undefined) r.notes = b.notes?.trim() || undefined;
+    if (b.url !== undefined) r.url = b.url?.trim() || undefined;
+    if (b.imageUrl !== undefined) r.imageUrl = /^https?:\/\//.test(b.imageUrl ?? '') ? b.imageUrl : undefined;
+    if (b.photo !== undefined) {
+      if (r.photo && r.photo !== b.photo) photos.remove(r.photo);
+      r.photo = b.photo || undefined;
+    }
+    r.updatedAt = now();
+  };
+
+  app.post<{ Body: RecipeBody }>('/api/recipes', (req, reply) =>
     guard(reply, 400, () => {
       const b = req.body ?? {};
-      const name = String(b.name ?? '').trim();
-      if (!name) throw new Error('A name is required');
-      const r: Recipe = {
-        id: newId(), name, url: b.url || undefined, imageUrl: b.imageUrl || undefined,
-        servings: Math.min(50, Math.max(1, Math.round(Number(b.servings) || 4))),
-        ingredients: lines(b.ingredients), steps: lines(b.steps), createdAt: now(),
-      };
+      if (!String(b.name ?? '').trim()) throw new Error('A name is required');
+      const r: Recipe = { id: newId(), name: '', servings: 4, tags: [], ingredients: [], steps: [], createdAt: now() };
+      applyRecipe(r, b);
       store.update((db) => db.recipes.unshift(r));
       return r;
     }),
   );
-  app.patch<{ Params: { id: string }; Body: Partial<Recipe> & { ingredients?: string | string[]; steps?: string | string[] } }>(
-    '/api/recipes/:id',
-    (req, reply) =>
-      guard(reply, 404, () =>
-        store.update((db) => {
-          const r = db.recipes.find((x) => x.id === req.params.id);
-          if (!r) throw new Error('Recipe not found');
-          const b = req.body ?? {};
-          if (b.name?.trim()) r.name = b.name.trim();
-          if (b.servings) r.servings = Math.min(50, Math.max(1, Math.round(Number(b.servings))));
-          if (b.ingredients !== undefined) r.ingredients = lines(b.ingredients);
-          if (b.steps !== undefined) r.steps = lines(b.steps);
-          return r;
-        }),
-      ),
+  app.patch<{ Params: { id: string }; Body: RecipeBody }>('/api/recipes/:id', (req, reply) =>
+    guard(reply, 404, () =>
+      store.update((db) => {
+        const r = db.recipes.find((x) => x.id === req.params.id);
+        if (!r) throw new Error('Recipe not found');
+        applyRecipe(r, req.body ?? {});
+        return r;
+      }),
+    ),
   );
   app.delete<{ Params: { id: string } }>('/api/recipes/:id', async (req) => {
     store.update((db) => {
-      db.recipes = db.recipes.filter((r) => r.id !== req.params.id);
-      for (const k of Object.keys(db.plan)) db.plan[k] = db.plan[k].filter((id) => id !== req.params.id);
+      const r = db.recipes.find((x) => x.id === req.params.id);
+      photos.remove(r?.photo);
+      db.recipes = db.recipes.filter((x) => x.id !== req.params.id);
+      // Keep planned evenings, just as words.
+      for (const m of Object.values(db.meals)) if (m.recipeId === req.params.id) Object.assign(m, { recipeId: undefined, text: r?.name });
     });
     return { ok: true };
   });
@@ -258,7 +282,7 @@ export async function apiRoutes(app: FastifyInstance, d: Deps) {
   /** Ingredients -> list items. Each line becomes an item named after the ingredient, with the full line as its note. */
   app.post<{ Body: { listId?: string; lines: { line: string; recipe?: string }[] } }>('/api/recipes/add-to-list', async (req) => {
     const who = whoIs(req);
-    const added = (req.body?.lines ?? []).slice(0, 200).map(({ line, recipe }) => {
+    const added = (req.body?.lines ?? []).slice(0, 200).filter(({ line }) => !isHeading(line)).map(({ line, recipe }) => {
       const name = ingredientName(line);
       const note = line.toLowerCase() === name.toLowerCase() ? (recipe ? `for ${recipe}` : undefined) : `${recipe ? `${recipe}: ` : ''}${line}`;
       return list.add({ name, listId: req.body?.listId, note, source: 'recipe' }, who);
@@ -266,21 +290,37 @@ export async function apiRoutes(app: FastifyInstance, d: Deps) {
     return { added: added.length };
   });
 
-  app.put<{ Params: { date: string }; Body: { recipeIds: string[] } }>('/api/plan/:date', (req, reply) =>
+  // ----- evening meal planner -----
+  const dayOk = (d: string) => /^\d{4}-\d{2}-\d{2}$/.test(d) && !Number.isNaN(Date.parse(d));
+  app.put<{ Params: { date: string }; Body: Meal }>('/api/meals/:date', (req, reply) =>
     guard(reply, 400, () => {
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(req.params.date)) throw new Error('Bad date');
-      const known = new Set(store.data.recipes.map((r) => r.id));
-      const ids = (req.body?.recipeIds ?? []).filter((id) => known.has(id));
+      if (!dayOk(req.params.date)) throw new Error('Bad date');
+      const b = req.body ?? {};
+      const recipeId = b.recipeId && store.data.recipes.some((r) => r.id === b.recipeId) ? b.recipeId : undefined;
+      const text = String(b.text ?? '').trim().slice(0, 80) || undefined;
+      if (!recipeId && !text) throw new Error('Pick a recipe or type what you are having');
+      const meal: Meal = { recipeId, text: recipeId ? undefined : text, servings: b.servings ? Math.min(50, Math.max(1, Math.round(Number(b.servings)))) : undefined };
       store.update((db) => {
-        if (ids.length) db.plan[req.params.date] = ids;
-        else delete db.plan[req.params.date];
-        // Keep the plan tidy: drop days more than 2 weeks ago.
-        const cutoff = new Date(Date.now() - 14 * 86_400_000).toISOString().slice(0, 10);
-        for (const k of Object.keys(db.plan)) if (k < cutoff) delete db.plan[k];
+        db.meals[req.params.date] = meal;
+        const cutoff = new Date(Date.now() - 120 * 86_400_000).toISOString().slice(0, 10);
+        for (const k of Object.keys(db.meals)) if (k < cutoff) delete db.meals[k];
       });
-      return { ok: true };
+      return meal;
     }),
   );
+  app.delete<{ Params: { date: string } }>('/api/meals/:date', async (req) => {
+    store.update((db) => {
+      delete db.meals[req.params.date];
+    });
+    return { ok: true };
+  });
+  /** For a Home Assistant REST sensor / dashboard: what's for tea tonight. */
+  app.get<{ Querystring: { date?: string } }>('/api/meals/today', async (req) => {
+    const d = req.query.date && dayOk(req.query.date) ? req.query.date : new Date().toLocaleDateString('en-CA', { timeZone: process.env.TZ || 'Europe/London' });
+    const m = store.data.meals[d];
+    const r = m?.recipeId ? store.data.recipes.find((x) => x.id === m.recipeId) : undefined;
+    return { date: d, meal: r?.name ?? m?.text ?? null, recipeId: r?.id ?? null, servings: m?.servings ?? r?.servings ?? null };
+  });
 
   // ----- loyalty cards -----
   const ean13ok = (n: string) => {

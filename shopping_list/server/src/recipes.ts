@@ -55,10 +55,36 @@ const steps = (v: unknown): string[] => {
   return v.flatMap((s) => {
     if (typeof s === 'string') return [text(s)];
     const o = s as Json;
-    if (o['@type'] === 'HowToSection') return steps(o.itemListElement);
+    if (o['@type'] === 'HowToSection') {
+      const name = text(o.name);
+      return [...(name ? [`${name.replace(/:$/, '')}:`] : []), ...steps(o.itemListElement)];
+    }
     return [text(o.text ?? o.name)];
   }).filter(Boolean);
 };
+
+/** "PT1H30M" -> 90. */
+export function isoMinutes(v: unknown): number | undefined {
+  const m = String(v ?? '').match(/^P(?:(\d+)D)?T?(?:(\d+)H)?(?:(\d+)M)?/i);
+  if (!m) return undefined;
+  const mins = Number(m[1] ?? 0) * 1440 + Number(m[2] ?? 0) * 60 + Number(m[3] ?? 0);
+  return mins > 0 && mins < 10_000 ? mins : undefined;
+}
+
+const tagList = (...vals: unknown[]): string[] => {
+  const out = new Set<string>();
+  for (const v of vals) {
+    const parts = Array.isArray(v) ? v.map(String) : String(v ?? '').split(',');
+    for (const p of parts) {
+      const t = text(p).toLowerCase();
+      if (t && t.length <= 24) out.add(t);
+    }
+  }
+  return [...out].slice(0, 6);
+};
+
+/** A line ending in ":" is a section heading, e.g. "For the sauce:". */
+export const isHeading = (line: string) => /:\s*$/.test(line) && line.length <= 60 && !/^\s*[\d½¼¾⅓⅔]/.test(line);
 
 const image = (v: unknown): string | undefined => {
   if (typeof v === 'string') return v;
@@ -74,14 +100,21 @@ export function recipeFromHtml(html: string, url?: string): Recipe | undefined {
     .map(text)
     .filter(Boolean);
   if (!ingredients.length) return undefined;
+  const prep = isoMinutes(r.prepTime);
+  const cook = isoMinutes(r.cookTime) ?? (prep ? undefined : isoMinutes(r.totalTime));
+  const description = text(r.description);
   return {
     id: newId(),
     name: text(r.name) || 'Recipe',
+    description: description ? description.slice(0, 400) : undefined,
     url,
     imageUrl: image(r.image),
     servings: Math.min(50, Math.max(1, firstNumber(r.recipeYield) ?? 4)),
+    prepMinutes: prep,
+    cookMinutes: cook,
+    tags: tagList(r.recipeCategory, r.recipeCuisine),
     ingredients,
-    steps: steps(r.recipeInstructions).slice(0, 60),
+    steps: steps(r.recipeInstructions).slice(0, 80),
     createdAt: now(),
   };
 }
