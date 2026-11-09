@@ -25,6 +25,6 @@ COPY --from=build /app/server/dist server/dist
 COPY --from=build /app/web/dist web/dist
 COPY run.sh /run.sh
 RUN chmod a+x /run.sh
-ENV NODE_ENV=production PORT=8099
+ENV NODE_ENV=production PORT=8099 DISPLAY=:99
 EXPOSE 8099
 CMD ["/run.sh"]
