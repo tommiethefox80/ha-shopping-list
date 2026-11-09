@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { api } from './api';
 import type { PageProps } from './App';
 import type { Recipe } from './types';
-import { photoUrl, pickAndUploadPhoto } from './util';
+import { PhotoButtons } from './PhotoButtons';
+import { photoUrl } from './util';
 
 /** Create or edit a recipe: everything you'd want on a recipe card. */
 export function RecipeEditor({ recipe, act, toast, onClose, onSaved }: {
@@ -38,19 +39,7 @@ export function RecipeEditor({ recipe, act, toast, onClose, onSaved }: {
           {pic ? <img className="photo" src={pic} alt="" /> : <div className="photo empty-photo">No photo</div>}
           <div className="grow">
             <label>Name<input value={name} placeholder="e.g. Chicken stir fry" onChange={(e) => setName(e.target.value)} /></label>
-            <button
-              className="secondary small-btn"
-              onClick={async () => {
-                try {
-                  const id = await pickAndUploadPhoto();
-                  if (id) setPhoto(id);
-                } catch (e) {
-                  toast((e as Error).message);
-                }
-              }}
-            >
-              📷 {pic ? 'Change photo' : 'Add a photo'}
-            </button>
+            <PhotoButtons has={!!pic} onPhoto={(id) => setPhoto(id)} onError={toast} />
           </div>
         </div>
         <label>Short description<input value={description} placeholder="e.g. Quick weeknight favourite" onChange={(e) => setDescription(e.target.value)} /></label>

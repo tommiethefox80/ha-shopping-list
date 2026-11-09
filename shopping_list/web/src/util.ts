@@ -15,27 +15,49 @@ export function parseMoney(s: string): number | null {
 
 export const photoUrl = (id: string) => `api/photos/${id}.jpg`;
 
-/** Take or choose a photo, shrink it on the phone, upload it; returns the photo id. */
-export async function pickAndUploadPhoto(): Promise<string | undefined> {
+/** Take a photo (camera) or choose one (gallery), shrink it on the phone, upload it; returns the photo id. */
+export async function pickAndUploadPhoto(source: 'camera' | 'gallery' = 'gallery'): Promise<string | undefined> {
   const file = await new Promise<File | undefined>((resolve) => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
-    input.setAttribute('capture', 'environment');
+    // "capture" makes phones open the camera straight away; without it you get the gallery / files.
+    if (source === 'camera') input.setAttribute('capture', 'environment');
     input.onchange = () => resolve(input.files?.[0]);
     input.click();
   });
   if (!file) return undefined;
-  const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, 900 / Math.max(bitmap.width, bitmap.height));
+  const img = await decodeImage(file);
+  const w = 'naturalWidth' in img ? img.naturalWidth : img.width;
+  const h = 'naturalHeight' in img ? img.naturalHeight : img.height;
+  const scale = Math.min(1, 900 / Math.max(w, h));
   const canvas = document.createElement('canvas');
-  canvas.width = Math.round(bitmap.width * scale);
-  canvas.height = Math.round(bitmap.height * scale);
-  canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  canvas.width = Math.round(w * scale);
+  canvas.height = Math.round(h * scale);
+  canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
   const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Could not read photo'))), 'image/jpeg', 0.8));
   const res = await fetch('api/photos', { method: 'POST', headers: { 'content-type': 'image/jpeg' }, body: blob });
   if (!res.ok) throw new Error('Photo upload failed');
   return ((await res.json()) as { id: string }).id;
+}
+
+/** Gallery photos can be HEIC etc.; try the fast decoder, then let the browser load it as an <img>. */
+async function decodeImage(file: File): Promise<ImageBitmap | HTMLImageElement> {
+  try {
+    return await createImageBitmap(file, { imageOrientation: 'from-image' } as ImageBitmapOptions);
+  } catch {
+    const url = URL.createObjectURL(file);
+    try {
+      return await new Promise<HTMLImageElement>((resolve, reject) => {
+        const i = new Image();
+        i.onload = () => resolve(i);
+        i.onerror = () => reject(new Error("That photo format can't be read here — try a JPEG or PNG"));
+        i.src = url;
+      });
+    } finally {
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    }
+  }
 }
 
 export const ago = (iso: string) => {

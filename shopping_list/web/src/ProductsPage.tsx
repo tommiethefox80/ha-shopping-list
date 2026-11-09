@@ -1,6 +1,7 @@
 import { lazy, Suspense, useState } from 'react';
 import { api } from './api';
-import { money, parseMoney, photoUrl, pickAndUploadPhoto } from './util';
+import { PhotoButtons } from './PhotoButtons';
+import { money, parseMoney, photoUrl } from './util';
 import type { PageProps } from './App';
 import type { Product } from './types';
 
@@ -91,19 +92,7 @@ function ProductEditor({ product, state, act, toast, onClose }: { product?: Prod
           {pic ? <img className="photo" src={pic} alt="" /> : <div className="photo empty-photo">No photo</div>}
           <div className="grow">
             <label>When we say<input value={label} placeholder="e.g. beans" onChange={(e) => setLabel(e.target.value)} /></label>
-            <button
-              className="secondary small-btn"
-              onClick={async () => {
-                try {
-                  const id = await pickAndUploadPhoto();
-                  if (id) setPhoto(id);
-                } catch (e) {
-                  toast((e as Error).message);
-                }
-              }}
-            >
-              📷 {pic ? 'Change photo' : 'Add photo'}
-            </button>
+            <PhotoButtons has={!!pic} onPhoto={(id) => setPhoto(id)} onError={toast} />
           </div>
         </div>
         <label>We mean (brand, size, variety)<input value={detail} placeholder="e.g. Branston Baked Beans 410g" onChange={(e) => setDetail(e.target.value)} /></label>

@@ -1,0 +1,39 @@
+# Dashboard cards for the Shopping List add-on.
+# The add-on publishes these sensors itself (option ha_sensors, on by default):
+#   sensor.tonights_dinner     state = tonight's meal; picture, times, servings, tomorrow, week
+#   sensor.shopping_list_items state = number of things still to get; items, lists
+#
+# Add a card: Dashboard → ⋮ Edit → + Add card → Manual, paste one of these.
+# Tapping opens the add-on. If your add-on's slug differs, it's in the address bar when you open it.
+
+# 1) Tonight's dinner with its photo
+type: picture-entity
+entity: sensor.tonights_dinner
+name: Tonight
+show_name: true
+show_state: true
+tap_action:
+  action: navigate
+  navigation_path: /hassio/ingress/aeb98774_shopping_list
+
+---
+# 2) This week's dinners
+type: markdown
+title: 🍽️ Dinners
+content: >-
+  {% set d = states.sensor.tonights_dinner %}
+  ### Tonight: {{ d.state }}
+
+  {% if d.attributes.total_minutes %}⏱ {{ d.attributes.total_minutes }} min{% endif %}{% if d.attributes.servings %} · for {{ d.attributes.servings }}{% endif %}
+
+  {% for m in d.attributes.week[1:] %}**{{ m.day[:3] }}** {{ m.meal or '—' }}<br>{% endfor %}
+
+---
+# 3) Shopping list count (tap to open the list)
+type: tile
+entity: sensor.shopping_list_items
+name: Shopping list
+icon: mdi:cart-outline
+tap_action:
+  action: navigate
+  navigation_path: /hassio/ingress/aeb98774_shopping_list

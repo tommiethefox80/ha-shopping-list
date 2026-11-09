@@ -55,6 +55,15 @@ export async function apiRoutes(app: FastifyInstance, d: Deps) {
       products: db.products,
       suggestions: dueSuggestions(db, listId),
       frequent: frequentNames(db),
+      // Bought in the last week (for "What can I make?"): product name + its "we mean" detail.
+      recentlyBought: [...new Set(
+        db.purchases
+          .filter((p) => Date.now() - Date.parse(p.at) < 7 * 86_400_000)
+          .flatMap((p) => {
+            const prod = p.productId ? db.products.find((x) => x.id === p.productId) : undefined;
+            return [prod?.label ?? p.name, ...(prod?.detail ? [prod.detail] : [])];
+          }),
+      )],
       memoryNames: Object.keys(db.memory).filter((k) => k.startsWith('n:')).map((k) => k.slice(2)),
       history: Object.entries(db.history)
         .filter(([k, h]) => !k.startsWith('p:') || db.products.some((p) => p.id === h.productId))

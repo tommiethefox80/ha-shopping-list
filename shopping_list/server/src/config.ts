@@ -6,6 +6,8 @@ export interface Config {
   apiToken: string;
   webDir: string;
   ha?: { url: string; token: string; entities: string[]; listName?: string };
+  /** Home Assistant REST API, for publishing the dinner / list sensors. */
+  haApi?: { apiUrl: string; token: string; wwwDir?: string };
 }
 
 /** Reads Home Assistant add-on options (/data/options.json) with env-var overrides. */
@@ -34,7 +36,17 @@ export function loadConfig(): Config {
       : entities.length && haUrl && haToken
         ? { url: haUrl.replace(/^http/, 'ws').replace(/\/$/, '') + '/api/websocket', token: haToken }
         : undefined;
+  const sensorsOn = String(env.HA_SENSORS ?? opts.ha_sensors ?? 'true') !== 'false';
+  const haApi = !sensorsOn
+    ? undefined
+    : supervisorToken
+      ? { apiUrl: 'http://supervisor/core/api', token: supervisorToken }
+      : haUrl && haToken
+        ? { apiUrl: haUrl.replace(/\/$/, '') + '/api', token: haToken }
+        : undefined;
+  const wwwDir = ['/homeassistant/www', '/config/www'].find((d) => existsSync(d.replace(/\/www$/, '')));
   return {
+    haApi: haApi && { ...haApi, wwwDir },
     ha: ha && { ...ha, entities, listName: String(env.HA_SYNC_LIST ?? opts.ha_sync_list ?? '') || undefined },
     port: Number(env.PORT ?? 8099),
     dataDir: env.DATA_DIR ?? (existsSync('/data') ? '/data' : './data'),

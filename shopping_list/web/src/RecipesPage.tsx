@@ -4,6 +4,7 @@ import type { PageProps } from './App';
 import { IngredientPicker } from './IngredientPicker';
 import { RecipeEditor } from './RecipeEditor';
 import { RecipeView } from './RecipeView';
+import { WhatCanIMake } from './WhatCanIMake';
 import type { Recipe } from './types';
 import { mins, recipePic } from './util';
 
@@ -17,6 +18,7 @@ export function RecipesPage(props: PageProps) {
   const [open, setOpen] = useState<string>();
   const [editing, setEditing] = useState<Recipe | 'new'>();
   const [picking, setPicking] = useState<{ recipe: Recipe; servings: number }>();
+  const [cookable, setCookable] = useState(false);
   const recipe = state.recipes.find((r) => r.id === open);
   const allTags = [...new Set(state.recipes.flatMap((r) => r.tags))].sort();
   const f = q.trim().toLowerCase();
@@ -49,6 +51,7 @@ export function RecipesPage(props: PageProps) {
         <button type="submit" disabled={busy}>{busy ? '…' : 'Import'}</button>
       </form>
 
+      {state.recipes.length > 0 && <button className="secondary wide cook-btn" onClick={() => setCookable(true)}>🥘 What can I make?</button>}
       {state.recipes.length > 0 && <input className="filter" placeholder="Search recipes or ingredients…" value={q} onChange={(e) => setQ(e.target.value)} />}
       {allTags.length > 0 && (
         <div className="chips tag-filter">
@@ -75,6 +78,7 @@ export function RecipesPage(props: PageProps) {
         })}
       </div>
 
+      {cookable && !recipe && <WhatCanIMake {...props} onClose={() => setCookable(false)} onOpen={(id) => setOpen(id)} />}
       {recipe && !editing && (
         <RecipeView
           {...props}

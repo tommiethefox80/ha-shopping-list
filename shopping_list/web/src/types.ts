@@ -104,6 +104,7 @@ export interface AppState {
   products: Product[];
   suggestions: Suggestion[];
   frequent: string[];
+  recentlyBought: string[];
   history: HistoryEntry[];
   memoryNames: string[];
   activity: Activity[];

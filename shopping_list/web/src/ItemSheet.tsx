@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { api } from './api';
 import type { PageProps } from './App';
 import type { Item } from './types';
-import { money, parseMoney, photoUrl, pickAndUploadPhoto } from './util';
+import { PhotoButtons } from './PhotoButtons';
+import { money, parseMoney, photoUrl } from './util';
 
 export function ItemSheet({ item, state, act, toast, onClose }: PageProps & { item: Item; onClose: () => void }) {
   const [name, setName] = useState(item.name);
@@ -38,15 +39,9 @@ export function ItemSheet({ item, state, act, toast, onClose }: PageProps & { it
     onClose();
   };
 
-  const addPhoto = async () => {
-    try {
-      const photo = await pickAndUploadPhoto();
-      if (!photo) return;
-      const pid = await ensureProduct();
-      await act(() => api.patch(`products/${pid}`, { photo }), 'Photo saved');
-    } catch (e) {
-      toast((e as Error).message);
-    }
+  const savePhoto = async (photo: string) => {
+    const pid = await ensureProduct();
+    await act(() => api.patch(`products/${pid}`, { photo }), 'Photo saved');
   };
 
   return (
@@ -60,7 +55,7 @@ export function ItemSheet({ item, state, act, toast, onClose }: PageProps & { it
           {pic ? <img className="photo" src={pic} alt="" /> : <div className="photo empty-photo">No photo</div>}
           <div className="grow">
             <label>Name<input value={name} onChange={(e) => setName(e.target.value)} /></label>
-            <button className="secondary small-btn" onClick={() => void addPhoto()}>📷 {pic ? 'Change photo' : 'Add photo of the exact one'}</button>
+            <PhotoButtons has={!!pic} onPhoto={savePhoto} onError={toast} />
           </div>
         </div>
         <label>

@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.6.0
+- Photos: choose one from the gallery or take a new one, for items, products and recipes
+- Tonight's dinner on your Home Assistant dashboard: the add-on now publishes `sensor.tonights_dinner` (photo, times, tomorrow and the week ahead) and `sensor.shopping_list_items` itself; ready-made cards in homeassistant/dashboard-cards.yaml
+- Shop mode (🛒 Shop): big rows in aisle order, tap to tick with undo, progress bar and trolley total, screen stays on, end-of-shop summary with what's still to get
+- What can I make?: tell it what you've got and it ranks your recipes by what's missing, then add the missing bits or have it tonight in one tap
+- New option `ha_sensors` (on by default)
+
 ## 3.5.0
 - Type-ahead: the app remembers everything you've ever added and how often
 - As you type it fills in the rest in grey ("ba" → bananas); Enter or → accepts, keep typing for something new

@@ -9,10 +9,13 @@ A shared shopping list for the household. It runs as a Home Assistant add-on and
 - **Aisles**: items are sorted into aisles automatically, in the order you walk the shop. Each list has its own order, and if you move an item to a different aisle once, it's remembered.
 - **Running low?** suggests things you buy regularly that are about due, based on how often you buy them.
 - **Live sync**: changes appear on every phone instantly. **Recent changes** shows who added or got what, using people's Home Assistant names.
-- **Multiple lists** (weekly shop, Aldi, B&Q…), each item with an optional **note** and a **photo** of the exact product.
+- **Multiple lists** (weekly shop, Aldi, B&Q…), each item with an optional **note** and a **photo** of the exact product (take one or pick from the gallery).
 - **Prices** are remembered per product, with a running total for the list and for what's in the trolley.
 - **Recipes**: a recipe book laid out like a cookbook, with photo, times, tags, ingredients (with section headings), numbered method and notes. Paste a link from most recipe sites to import one, or write your own. Cook mode keeps the screen on and lets you tick steps off.
-- **Meals**: a Monday–Sunday evening meal planner. Each day can be a recipe or just "Leftovers" or "Takeaway". Add the whole week's ingredients to the list in one tap. A "Tonight's dinner" sensor example for HA dashboards is in `homeassistant/`.
+- **Meals**: a Monday–Sunday evening meal planner. Each day can be a recipe or just "Leftovers" or "Takeaway". Add the whole week's ingredients to the list in one tap.
+- **What can I make?** On Recipes, tell it what you've got (and optionally count this week's shop and the list). It ranks your recipes by how little you'd need to buy, with one tap to add the missing bits or have it tonight.
+- **Shop mode** (🛒 Shop on the list): big tap targets in aisle order, undo, progress bar, trolley total, screen stays on, and a summary at the end of what you got and what's still to get.
+- **Tonight's dinner on your HA dashboard**: the add-on publishes `sensor.tonights_dinner` (with the photo, times and the week ahead) and `sensor.shopping_list_items`. Ready-made cards are in `shopping_list/homeassistant/dashboard-cards.yaml`.
 - **Patchy signal is fine**: ticks and additions made with no signal show at once and sync when you're back online.
 - **Loyalty cards** (💳): scan your Clubcard or keyfob once, then show its barcode full-screen at the till.
 - **Tick off** items as you shop. They move to **Got it** until you clear them.
@@ -33,8 +36,18 @@ It's a small Node app on Alpine (amd64 and aarch64) and uses very little memory.
 
 | Option | Default | Notes |
 |---|---|---|
+| `ha_sensors` | `true` | Publish `sensor.tonights_dinner` and `sensor.shopping_list_items` to Home Assistant. |
 | `ha_todo_entities`, `ha_sync_list` | | See *Home Assistant to-do sync* below |
 | `api_token` | empty | Needed for calls that don't come through ingress, e.g. HA's `rest_command`. |
+
+## Dashboard cards
+
+The add-on keeps two sensors up to date (no YAML needed):
+
+- `sensor.tonights_dinner`: tonight's meal, with its photo, description, times, tomorrow's meal and the week's plan as attributes.
+- `sensor.shopping_list_items`: how many things are still to get, per list.
+
+To add the cards: open a dashboard, **Edit → Add card → Manual**, and paste a card from `shopping_list/homeassistant/dashboard-cards.yaml`. Tapping the dinner card opens the app; if your add-on's address differs from `/hassio/ingress/aeb98774_shopping_list`, copy it from the browser bar when the app is open.
 
 ## Home Assistant to-do sync (voice, Alexa, dashboards)
 

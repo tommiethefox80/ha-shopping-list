@@ -6,6 +6,7 @@ import { AislesSheet } from './AislesSheet';
 import { CardsSheet } from './CardsSheet';
 import { ItemSheet } from './ItemSheet';
 import { ListsSheet } from './ListsSheet';
+import { ShopMode } from './ShopMode';
 import type { Category, Item } from './types';
 import { ago, money, photoUrl } from './util';
 
@@ -16,7 +17,7 @@ export function ListPage(props: PageProps) {
   const [scanning, setScanning] = useState(false);
   const [editing, setEditing] = useState<string>();
   const [showDone, setShowDone] = useState(false);
-  const [sheet, setSheet] = useState<'lists' | 'aisles' | 'cards'>();
+  const [sheet, setSheet] = useState<'lists' | 'aisles' | 'cards' | 'shop'>();
   const [showActivity, setShowActivity] = useState(false);
 
   const items = state.items.filter((i) => i.listId === list.id);
@@ -47,8 +48,9 @@ export function ListPage(props: PageProps) {
           <span className="caret">▾</span>
         </button>
         <span className="row head-right">
-          <span className="muted">{open.length} to get</span>
+          <span className="muted to-get">{open.length} to get</span>
           <button className="card-btn" aria-label="Loyalty cards" onClick={() => setSheet('cards')}>💳</button>
+          <button className="shop-btn" onClick={() => setSheet('shop')}>🛒 Shop</button>
         </span>
       </header>
 
@@ -183,6 +185,7 @@ export function ListPage(props: PageProps) {
       {sheet === 'lists' && <ListsSheet {...props} onClose={() => setSheet(undefined)} onArrange={() => setSheet('aisles')} />}
       {sheet === 'aisles' && <AislesSheet {...props} onClose={() => setSheet(undefined)} />}
       {sheet === 'cards' && <CardsSheet {...props} onClose={() => setSheet(undefined)} />}
+      {sheet === 'shop' && <ShopMode {...props} onClose={() => setSheet(undefined)} />}
     </>
   );
 }

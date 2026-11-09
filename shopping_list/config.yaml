@@ -1,5 +1,5 @@
 name: Shopping List
-version: "3.5.0"
+version: "3.6.0"
 slug: shopping_list
 description: Shared household shopping list with usuals, barcode scanning and products you always buy
 url: https://github.com/tommiethefox80/ha-shopping-list
@@ -15,12 +15,17 @@ panel_icon: mdi:cart-outline
 panel_title: Shopping
 # Lets the add-on talk to Home Assistant's to-do lists (Assist, Alexa, the To-do dashboard).
 homeassistant_api: true
+# HA's config folder: recipe photos are copied to www/shopping_list for the dinner card.
+map:
+  - homeassistant_config:rw
 options:
+  ha_sensors: true
   ha_todo_entities:
     - todo.shopping_list
   ha_sync_list: ""
   api_token: ""
 schema:
+  ha_sensors: bool
   ha_todo_entities:
     - str
   ha_sync_list: str?
